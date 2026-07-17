@@ -294,6 +294,7 @@ button { font-family: inherit; }
     <button id="comecar">Iniciar expedição ⚡</button>
     <button id="abrir-salvo">Continuar uma expedição salva</button>
     <input id="input-json" type="file" accept="application/json" hidden>
+    <p style="font-size:13px;color:#8a8ea0;margin-top:14px">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
   </div>
 </section>
 
@@ -326,6 +327,7 @@ button { font-family: inherit; }
       <textarea id="texto" placeholder="Seu próximo passo: dúvida, tentativa, ou onde travou..." rows="2"></textarea>
       <button id="enviar" onclick="enviar()">⚡</button>
     </div>
+    <p style="font-size:11.5px;color:#a0a4b2;text-align:center;margin-top:6px">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
   </div>
 </main>
 
@@ -401,6 +403,8 @@ QUALIDADE E PRECISÃO: Perguntas e pistas tecnicamente corretas e específicas. 
 COMO GUIAR: Descubra onde o aluno está: o que sabe, o que tentou, onde travou. Faça UMA pergunta boa por vez. Aponte o caminho, nunca o destino.
 
 MATERIAL ENVIADO: Documentos anexados são fonte primária. Aponte páginas e trechos REAIS ("veja a página 12, onde..."). Se o material não cobre o assunto, diga. NUNCA invente página, autor, frase ou citação.
+
+REFERÊNCIAS EXTERNAS: Quando ajudar o raciocínio, você pode apontar autores e obras CONSOLIDADAS da área, apenas quando tiver alta confiança de que existem (autores clássicos, obras de referência, conceitos com literatura estabelecida). Regras: (1) NUNCA escreva URLs, DOIs ou anos que você não tem certeza; (2) NUNCA invente artigo ou autor; na dúvida, indique o CONCEITO a buscar em vez do autor; (3) para cada indicação, escreva o termo de busca entre chaves duplas, que o app transforma em link de busca real. Exemplos: "veja os trabalhos clássicos de {{Vollenweider eutrofização}}" ou "esse conceito aparece em {{Odum ecologia de sistemas}}" ou "procure revisões sobre {{carbon flux tropical wetlands}}". Use no máximo 1 ou 2 indicações por resposta, e só quando agregar de verdade.
 
 CUIDADO EMOCIONAL (importante, com limites): Você é caloroso na medida certa: acolhe em frases curtas quando o aluno demonstra angústia, sem dramatizar, sem virar consolo repetitivo, e volta ao trabalho, porque progresso concreto é o melhor calmante. Você NÃO é terapeuta e não finge ser: não diagnostica, não conduz conversa terapêutica. Se o aluno expressar sofrimento sério ou persistente (pânico, desespero, menção a desistir de tudo), reconheça com gentileza, diga que isso merece cuidado de gente de verdade e sugira UMA vez procurar o serviço de apoio ao estudante da universidade ou alguém de confiança. Se houver qualquer menção a se machucar, oriente com carinho a buscar ajuda imediatamente (no Brasil, o CVV atende no 188, de graça, a qualquer hora) e não continue a tarefa como se nada tivesse acontecido.
 
@@ -489,6 +493,24 @@ function entrarNoApp() {
 
 /* ================= TRILHA ================= */
 const MARCADOR = { aluno: '🧑', tutor: '⚡', resumo: '🗺️', aviso: '⚠️', pensando: '⚡' };
+// Transforma {{termo}} em link de busca no Google Scholar (link de busca nunca quebra)
+function renderCorpo(el, texto) {
+  const partes = String(texto).split(/\{\{([^{}]+)\}\}/g);
+  partes.forEach((parte, i) => {
+    if (i % 2 === 0) {
+      el.appendChild(document.createTextNode(parte));
+    } else {
+      const termo = parte.trim();
+      const a = document.createElement('a');
+      a.href = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(termo);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = '🔎 ' + termo;
+      a.style.cssText = 'display:inline-block;background:var(--tint4);color:var(--grafite);border:1.5px solid var(--p4);border-radius:999px;padding:2px 12px;margin:2px 2px;font-size:15px;font-weight:600;text-decoration:none;';
+      el.appendChild(a);
+    }
+  });
+}
 function addNo(role, texto, classeExtra) {
   const trilha = document.getElementById('trilha');
   const tipo = classeExtra || (role === 'user' ? 'aluno' : 'tutor');
@@ -504,7 +526,7 @@ function addNo(role, texto, classeExtra) {
                     : role === 'user' ? (nomeAluno || 'Você') : 'Faísca';
   const corpo = document.createElement('div');
   corpo.className = 'corpo';
-  corpo.textContent = texto;
+  renderCorpo(corpo, texto);
   div.appendChild(marc); div.appendChild(quem); div.appendChild(corpo);
   trilha.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -614,8 +636,9 @@ async function fecharSessao() {
 function historicoTexto() {
   return historico.map(m => ({
     role: m.role,
-    content: typeof m.content === 'string' ? m.content
-      : m.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
+    content: (typeof m.content === 'string' ? m.content
+      : m.content.filter(b => b.type === 'text').map(b => b.text).join('\n'))
+      .replace(/\{\{([^{}]+)\}\}/g, (_, t) => t.trim() + ' [buscar no Google Scholar]')
   }));
 }
 function salvarArquivo() {
