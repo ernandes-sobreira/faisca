@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="vitamina">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faísca · pense com a IA, não pela IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TEMAS (fundo sempre branco, cor nos acentos) ============ */
+:root, [data-tema="vitamina"] {
+  --p1: #7c3aed; --p2: #ec4899; --p3: #f59e0b; --p4: #10b981;
+  --tint1: #f3ecff; --tint2: #fdf0f7; --tint3: #fff6e5; --tint4: #e9faf3;
+}
+[data-tema="pantanal"] {
+  --p1: #0e9f6e; --p2: #0ea5e9; --p3: #d97706; --p4: #65a30d;
+  --tint1: #e8f9f2; --tint2: #e8f6fd; --tint3: #fdf1e0; --tint4: #f2f9e4;
+}
+[data-tema="tropical"] {
+  --p1: #f43f5e; --p2: #fb923c; --p3: #8b5cf6; --p4: #06b6d4;
+  --tint1: #ffecef; --tint2: #fff2e8; --tint3: #f2ecff; --tint4: #e6f9fd;
+}
+[data-tema="oceano"] {
+  --p1: #2563eb; --p2: #06b6d4; --p3: #6366f1; --p4: #14b8a6;
+  --tint1: #e9f0fe; --tint2: #e6f9fd; --tint3: #edeefe; --tint4: #e6f9f6;
+}
+:root {
+  --branco: #ffffff; --grafite: #1f2330; --cinza: #f5f6fa; --borda: #e5e7f0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--branco); color: var(--grafite);
+  font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.65;
+}
+h1, h2, .logo { font-family: 'Sora', sans-serif; }
+.grad-txt {
+  background: linear-gradient(90deg, var(--p1), var(--p2), var(--p3));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ============ ABERTURA ============ */
+#abertura {
+  position: relative; min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 28px 18px; overflow: hidden;
+}
+.pensamento {
+  position: absolute; padding: 10px 18px; border-radius: 999px;
+  font-size: 15px; font-weight: 600; white-space: nowrap; opacity: 0;
+  animation: flutuar 14s linear infinite; pointer-events: none;
+  border: 2px solid transparent;
+}
+@keyframes flutuar {
+  0% { transform: translateY(28vh) rotate(-2deg) scale(.95); opacity: 0; }
+  12% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(-46vh) rotate(2deg) scale(1.05); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pensamento { animation: none; opacity: .55; } }
+
+#cartao {
+  position: relative; z-index: 2; background: var(--branco);
+  border: 3px solid var(--grafite); border-radius: 24px;
+  box-shadow: 10px 10px 0 var(--p1);
+  max-width: 580px; width: 100%; padding: 36px 30px; text-align: center;
+}
+.logo-grande { font-size: 52px; font-weight: 800; letter-spacing: -2px; }
+.raio { display: inline-block; transform: rotate(8deg); }
+.lema { font-size: 19px; margin: 8px 0 24px; color: #4a4e5c; }
+.lema b { color: var(--p2); }
+
+.secao-config { text-align: left; margin-bottom: 18px; }
+.secao-config .titulo {
+  font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--p1); margin-bottom: 8px;
+}
+#nome {
+  width: 100%; font-family: inherit; font-size: 18px; padding: 13px 15px;
+  border: 2px solid var(--borda); border-radius: 12px; background: var(--branco);
+}
+#nome:focus { outline: 3px solid var(--p3); border-color: var(--grafite); }
+
+.opcoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.opcao {
+  flex: 1; min-width: 140px; text-align: left; cursor: pointer;
+  border: 2px solid var(--borda); border-radius: 14px; padding: 12px 14px;
+  background: var(--branco); font-family: inherit; font-size: 15px; transition: all .12s;
+}
+.opcao .op-nome { font-weight: 700; font-size: 16px; display: block; }
+.opcao .op-desc { color: #6b7080; font-size: 13.5px; line-height: 1.4; }
+.opcao.ativa { border-color: var(--p1); background: var(--tint1); box-shadow: 3px 3px 0 var(--p1); }
+
+.bolinhas { display: flex; gap: 12px; justify-content: flex-start; }
+.bolinha {
+  width: 46px; height: 46px; border-radius: 50%; cursor: pointer;
+  border: 3px solid var(--borda); transition: transform .12s;
+}
+.bolinha:hover { transform: scale(1.12); }
+.bolinha.ativa { border-color: var(--grafite); box-shadow: 0 0 0 3px var(--branco), 0 0 0 6px var(--grafite); }
+.b-vitamina { background: linear-gradient(135deg, #7c3aed, #ec4899, #f59e0b); }
+.b-pantanal { background: linear-gradient(135deg, #0e9f6e, #0ea5e9, #d97706); }
+.b-tropical { background: linear-gradient(135deg, #f43f5e, #fb923c, #8b5cf6); }
+.b-oceano  { background: linear-gradient(135deg, #2563eb, #06b6d4, #14b8a6); }
+
+#zona-upload {
+  border: 2px dashed var(--p4); border-radius: 12px; padding: 14px;
+  font-size: 15.5px; cursor: pointer; background: var(--tint4); transition: filter .15s;
+}
+#zona-upload:hover { filter: brightness(.97); }
+.aviso-peso { font-size: 13.5px; color: #7a7e8c; }
+#lista-arquivos { font-size: 15px; text-align: left; }
+.arquivo-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--cinza); border-radius: 8px; padding: 8px 12px; margin-top: 6px;
+}
+.arquivo-item button { background: none; border: none; color: var(--p2); font-size: 15px; cursor: pointer; font-weight: 700; }
+
+#comecar {
+  width: 100%; font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 800;
+  padding: 17px; margin-top: 6px; border: 3px solid var(--grafite); border-radius: 16px;
+  background: linear-gradient(90deg, var(--p3), var(--p2)); color: var(--branco);
+  cursor: pointer; box-shadow: 5px 5px 0 var(--grafite); transition: transform .1s, box-shadow .1s;
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
+#comecar:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--grafite); }
+#comecar:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--grafite); }
+#abrir-salvo {
+  margin-top: 12px; background: none; border: none; color: var(--p1);
+  font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer; text-decoration: underline;
+}
+
+/* ============ CONVERSA ============ */
+#app { display: none; min-height: 100vh; flex-direction: column; max-width: 880px; margin: 0 auto; padding: 0 16px; }
+#topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 14px 0 10px; border-bottom: 3px solid var(--grafite);
+  position: sticky; top: 0; background: var(--branco); z-index: 5; flex-wrap: wrap;
+}
+#topo .logo { font-size: 26px; font-weight: 800; }
+#topo .acoes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+#topo .acoes .bolinha { width: 30px; height: 30px; border-width: 2px; }
+#topo button.btn {
+  font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700;
+  padding: 8px 13px; border-radius: 10px; cursor: pointer;
+  background: var(--branco); border: 2px solid var(--grafite); color: var(--grafite);
+}
+#topo button.btn.destaque { background: var(--p4); color: #fff; border-color: var(--p4); }
+
+#chat { flex: 1; padding: 22px 0 10px; }
+.msg { max-width: 88%; margin-bottom: 16px; padding: 14px 18px; border-radius: 18px; white-space: pre-wrap; }
+.msg .quem {
+  font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 5px;
+}
+.aluno { margin-left: auto; background: var(--tint3); border: 2px solid var(--p3); border-bottom-right-radius: 5px; }
+.aluno .quem { color: var(--p3); filter: brightness(.75); }
+.tutor { margin-right: auto; background: var(--tint1); border: 2px solid var(--p1); border-bottom-left-radius: 5px; }
+.tutor .quem { color: var(--p1); }
+.resumo { margin: 0 auto 16px; background: var(--tint4); border: 2px solid var(--p4); max-width: 100%; }
+.resumo .quem { color: var(--p4); filter: brightness(.7); }
+.aviso-sistema { margin: 0 auto 16px; background: #fff4f4; border: 2px solid #f0b4b4; max-width: 100%; font-size: 16px; }
+.aviso-sistema .quem { color: #c0392b; }
+.pensando { color: #8a8ea0; font-style: italic; }
+.ponto { display: inline-block; animation: pisca 1.2s infinite; color: var(--p1); }
+.ponto:nth-child(2){ animation-delay:.2s } .ponto:nth-child(3){ animation-delay:.4s }
+@keyframes pisca { 0%,100%{opacity:.15} 50%{opacity:1} }
+
+#faisca-dica {
+  font-size: 15px; color: var(--p1); background: var(--tint1);
+  border-radius: 999px; padding: 6px 16px; display: inline-block;
+  margin-bottom: 10px; transition: opacity .6s; font-weight: 600;
+}
+#rodape { position: sticky; bottom: 0; background: var(--branco); padding: 6px 0 16px; }
+#linha-envio { display: flex; gap: 10px; align-items: flex-end; }
+#texto {
+  flex: 1; font-family: inherit; font-size: 18px; padding: 13px;
+  border: 2px solid var(--grafite); border-radius: 14px;
+  resize: none; min-height: 56px; max-height: 180px; background: var(--branco);
+}
+#texto:focus { outline: 3px solid var(--p3); }
+#enviar {
+  font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 800;
+  padding: 14px 24px; border: 3px solid var(--grafite); border-radius: 14px;
+  background: linear-gradient(135deg, var(--p1), var(--p2)); color: #fff; cursor: pointer;
+  box-shadow: 3px 3px 0 var(--grafite);
+}
+#enviar:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; }
+@media (max-width: 620px) {
+  body { font-size: 17px; }
+  .logo-grande { font-size: 42px; }
+  .msg { max-width: 96%; }
+  #topo .logo { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================= ABERTURA ================= -->
+<section id="abertura">
+  <div id="ceu"></div>
+  <div id="cartao">
+    <div class="logo logo-grande">Faísc<span class="grad-txt">a</span><span class="raio">⚡</span></div>
+    <p class="lema">Ninguém fica inteligente recebendo resposta pronta.<br>Aqui você <b>constrói</b> a sua, com um tutor que pensa junto.</p>
+
+    <div class="secao-config">
+      <div class="titulo">Seu nome</div>
+      <input id="nome" type="text" placeholder="Como o Faísca deve te chamar? (opcional)" autocomplete="name">
+    </div>
+
+    <div class="secao-config">
+      <div class="titulo">Estilo do tutor</div>
+      <div class="opcoes" id="perfis">
+        <button class="opcao ativa" data-perfil="guia">
+          <span class="op-nome">🧭 Guia</span>
+          <span class="op-desc">Paciente, quebra em passos pequenos. Bom para quem está começando.</span>
+        </button>
+        <button class="opcao" data-perfil="treinador">
+          <span class="op-nome">🏋️ Treinador</span>
+          <span class="op-desc">Ritmo rápido, desafios diretos. Bom para quem quer ser puxado.</span>
+        </button>
+        <button class="opcao" data-perfil="provocador">
+          <span class="op-nome">😈 Provocador</span>
+          <span class="op-desc">Joga contra-argumentos e testa suas certezas. Bom para pós-graduação.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="secao-config">
+      <div class="titulo">Cores</div>
+      <div class="bolinhas" id="temas">
+        <button class="bolinha b-vitamina ativa" data-tema="vitamina" aria-label="Tema Vitamina"></button>
+        <button class="bolinha b-pantanal" data-tema="pantanal" aria-label="Tema Pantanal"></button>
+        <button class="bolinha b-tropical" data-tema="tropical" aria-label="Tema Tropical"></button>
+        <button class="bolinha b-oceano" data-tema="oceano" aria-label="Tema Oceano"></button>
+      </div>
+    </div>
+
+    <div class="secao-config">
+      <div class="titulo">Material da tarefa</div>
+      <div id="zona-upload" tabindex="0" role="button">
+        📎 Enviar PDF da disciplina
+        <div class="aviso-peso">Com o material, o Faísca aponta páginas e trechos reais. Até 3 arquivos, ideal abaixo de 10 MB.</div>
+      </div>
+      <input id="input-arquivo" type="file" accept="application/pdf" multiple hidden>
+      <div id="lista-arquivos"></div>
+    </div>
+
+    <button id="comecar">Acender a faísca ⚡</button>
+    <button id="abrir-salvo">Continuar uma conversa salva</button>
+    <input id="input-json" type="file" accept="application/json" hidden>
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<main id="app">
+  <div id="topo">
+    <div class="logo">Faísc<span class="grad-txt">a</span>⚡</div>
+    <div class="acoes">
+      <button class="bolinha b-vitamina" data-tema="vitamina" aria-label="Tema Vitamina"></button>
+      <button class="bolinha b-pantanal" data-tema="pantanal" aria-label="Tema Pantanal"></button>
+      <button class="bolinha b-tropical" data-tema="tropical" aria-label="Tema Tropical"></button>
+      <button class="bolinha b-oceano" data-tema="oceano" aria-label="Tema Oceano"></button>
+      <button class="btn" onclick="salvarArquivo()">💾 Salvar</button>
+      <button class="btn destaque" onclick="fecharSessao()">Fechar sessão ✦</button>
+    </div>
+  </div>
+  <div id="chat"></div>
+  <div id="rodape">
+    <span id="faisca-dica">💭 Onde exatamente você travou?</span>
+    <div id="linha-envio">
+      <textarea id="texto" placeholder="Sua dúvida, sua tentativa, ou onde travou..." rows="2"></textarea>
+      <button id="enviar" onclick="enviar()">⚡</button>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ================= CONFIGURAÇÃO ================= */
+// Cole aqui a URL do seu Cloudflare Worker para publicar no GitHub Pages.
+// Ex.: const WORKER_URL = "https://faisca.seuusuario.workers.dev";
+// Vazio = modo artifact (funciona só dentro do Claude).
+const WORKER_URL = "";
+
+/* ================= PENSAMENTOS FLUTUANTES ================= */
+const PENSAMENTOS = [
+  "E se for o contrário?", "Como você sabe disso?", "Qual é a evidência?",
+  "O que você já tentou?", "Por que isso importa?", "Qual é a exceção?",
+  "Explique para um colega", "Que dado falta aqui?", "Isso sempre é verdade?",
+  "Qual é a premissa escondida?", "O que um crítico diria?", "Onde isso conecta com a aula?"
+];
+(function criarCeu(){
+  const ceu = document.getElementById('ceu');
+  const tints = ['tint1','tint2','tint3','tint4'];
+  const cores = ['p1','p2','p3','p4'];
+  PENSAMENTOS.forEach((t, i) => {
+    const b = document.createElement('div');
+    b.className = 'pensamento';
+    b.style.background = `var(--${tints[i % 4]})`;
+    b.style.color = `var(--${cores[i % 4]})`;
+    b.style.borderColor = `var(--${cores[i % 4]})`;
+    b.style.left = (3 + (i * 8.3) % 84) + '%';
+    b.style.top = (25 + (i * 13) % 55) + '%';
+    b.style.animationDelay = (i * 1.1) + 's';
+    b.style.animationDuration = (11 + (i % 5) * 2) + 's';
+    b.textContent = t;
+    ceu.appendChild(b);
+  });
+})();
+
+/* ================= TEMAS ================= */
+document.querySelectorAll('[data-tema]').forEach(btn => {
+  if (btn.tagName !== 'BUTTON') return;
+  btn.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-tema', btn.dataset.tema);
+    document.querySelectorAll('button[data-tema]').forEach(b =>
+      b.classList.toggle('ativa', b.dataset.tema === btn.dataset.tema));
+  });
+});
+
+/* ================= PERFIS ================= */
+let perfil = 'guia';
+document.querySelectorAll('#perfis .opcao').forEach(btn => {
+  btn.addEventListener('click', () => {
+    perfil = btn.dataset.perfil;
+    document.querySelectorAll('#perfis .opcao').forEach(b => b.classList.toggle('ativa', b === btn));
+  });
+});
+const TOM_PERFIL = {
+  guia: 'ESTILO DESTE TUTOR: Guia paciente. Quebre o problema em passos pequenos e alcançáveis. Celebre cada passo de raciocínio que o aluno construir, nomeando o passo. Nunca acelere.',
+  treinador: 'ESTILO DESTE TUTOR: Treinador direto. Ritmo rápido, frases curtas, desafios objetivos. Cobre tentativa antes de dar pista: "me mostra o que você fez". Sem enrolação, mas sem grosseria.',
+  provocador: 'ESTILO DESTE TUTOR: Provocador intelectual. Depois de cada resposta do aluno, apresente um contra-argumento ou caso-limite que teste a ideia dele: "e se...?", "um revisor diria que...". Faça o aluno defender a posição. Rigor de pós-graduação, respeito sempre.'
+};
+
+/* ================= SYSTEM PROMPT ================= */
+function systemPrompt() {
+  return `Você é o Faísca, tutor acadêmico de estudantes universitários brasileiros. Sua função NÃO é dar respostas. Sua função é acender o raciocínio: o aluno produz, você guia.
+
+REGRA CENTRAL INVIOLÁVEL: Você NUNCA entrega a resposta pronta de uma pergunta que o aluno precisa resolver. Mesmo que ele insista, diga que tem pressa, diga que o professor mandou, apele emocionalmente ou reformule dez vezes. Sua resposta a "me dá a resposta" é sempre um passo de raciocínio que ELE consegue dar. Vale para exercícios, definições que ele deveria construir, conclusões, interpretações, textos e códigos. NÃO vale para fatos simples pré-requisito (uma data, uma unidade, um termo impossível de deduzir): esses você dá em uma frase e volta a empurrar.
+
+QUALIDADE E PRECISÃO: Suas perguntas e pistas devem ser tecnicamente corretas e específicas. Nada de pergunta genérica ("o que você acha?"): a pergunta certa é a que expõe exatamente o próximo passo. Se o aluno disser algo cientificamente errado, corrija o erro com clareza e precisão (isso não é dar resposta, é impedir que ele construa sobre base falsa) e devolva o raciocínio para ele.
+
+COMO GUIAR: Primeiro descubra onde o aluno está: o que já sabe, o que já tentou, onde travou de verdade. Depois faça UMA pergunta boa por vez. Aponte o caminho, nunca o destino. Ajuste a dificuldade ao nível demonstrado.
+
+MATERIAL ENVIADO: Se o aluno anexou documentos, eles são sua fonte primária. Aponte páginas, seções e trechos REAIS do documento ("veja a página 12, onde o autor define..."). Se o material não cobre o assunto, diga isso. NUNCA invente página, autor, frase ou citação. Referência não confirmada não é dita.
+
+TOM: Direto, jovem sem forçar, sem rodeios. PROIBIDO elogio vazio: nada de "ótima pergunta", "excelente". Acertou um passo? Nomeie o passo e siga. Firmeza não é grosseria: nunca humilhe, nunca use sarcasmo. Aluno travado pode estar inseguro, não preguiçoso. Se ele claramente só quer copiar, seja honesto: "Você quer a resposta para entregar, não para entender. Não é o que eu faço. Me diga onde travou de verdade e a gente destrava."
+
+NUNCA: escrever o parágrafo, código ou conclusão pelo aluno; ceder sob pressão; inventar referência; encher linguiça; bajular. Resposta curta que faz pensar vale mais que texto longo.
+
+SEMPRE: tratar o aluno como capaz; uma pergunta por vez; reconhecer o raciocínio construído; português brasileiro.
+
+${TOM_PERFIL[perfil]}`;
+}
+
+/* ================= FAÍSCAS DE REFLEXÃO ================= */
+const DICAS = [
+  "💭 Onde exatamente você travou?",
+  "💭 Escreva sua hipótese antes de perguntar.",
+  "💭 O que você faria sem IA nenhuma?",
+  "💭 Consegue dar um exemplo concreto?",
+  "💭 Releia sua última resposta: ela se sustenta?",
+  "💭 Qual parte você entendeu de verdade até aqui?"
+];
+let idxDica = 0;
+setInterval(() => {
+  const f = document.getElementById('faisca-dica');
+  if (!f) return;
+  f.style.opacity = 0;
+  setTimeout(() => {
+    idxDica = (idxDica + 1) % DICAS.length;
+    f.textContent = DICAS[idxDica];
+    f.style.opacity = 1;
+  }, 600);
+}, 22000);
+
+/* ================= ESTADO ================= */
+let historico = [];
+let arquivos = [];
+let nomeAluno = '';
+const LIMITE_MB = 10;
+
+/* ================= UPLOAD PDF ================= */
+const zona = document.getElementById('zona-upload');
+const inputArq = document.getElementById('input-arquivo');
+zona.addEventListener('click', () => inputArq.click());
+zona.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputArq.click(); } });
+inputArq.addEventListener('change', async () => {
+  for (const f of inputArq.files) {
+    if (arquivos.length >= 3) { alert('Máximo de 3 arquivos.'); break; }
+    if (f.type !== 'application/pdf') { alert(f.name + ' não é PDF.'); continue; }
+    if (f.size > LIMITE_MB * 1024 * 1024) {
+      alert(f.name + ' passa de ' + LIMITE_MB + ' MB. Envie só o capítulo da tarefa, não o livro inteiro.');
+      continue;
+    }
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Falha ao ler ' + f.name));
+      r.readAsDataURL(f);
+    });
+    arquivos.push({ nome: f.name, base64 });
+  }
+  inputArq.value = '';
+  renderArquivos();
+});
+function renderArquivos() {
+  const el = document.getElementById('lista-arquivos');
+  el.innerHTML = '';
+  arquivos.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'arquivo-item';
+    const nome = document.createElement('span');
+    nome.textContent = '📄 ' + a.nome;
+    const btn = document.createElement('button');
+    btn.textContent = 'remover';
+    btn.onclick = () => { arquivos.splice(i, 1); renderArquivos(); };
+    div.appendChild(nome); div.appendChild(btn);
+    el.appendChild(div);
+  });
+}
+
+/* ================= INÍCIO ================= */
+document.getElementById('comecar').addEventListener('click', () => {
+  nomeAluno = document.getElementById('nome').value.trim();
+  entrarNoApp();
+  addBolha('assistant',
+    'Oi' + (nomeAluno ? ', ' + nomeAluno : '') + '! Eu sou o Faísca ⚡ Eu não dou resposta pronta: eu penso junto até VOCÊ chegar lá. ' +
+    (arquivos.length ? 'Já recebi seu material e vou usá-lo como base. ' : '') +
+    'Me conta: qual é a tarefa, e o que você já tentou?');
+});
+function entrarNoApp() {
+  document.getElementById('abertura').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('texto').focus();
+}
+
+/* ================= CHAT ================= */
+function addBolha(role, texto, classeExtra) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (classeExtra || (role === 'user' ? 'aluno' : 'tutor'));
+  const quem = document.createElement('div');
+  quem.className = 'quem';
+  quem.textContent = classeExtra === 'resumo' ? '✦ Seu caminho nesta sessão'
+                    : classeExtra === 'aviso-sistema' ? 'Aviso'
+                    : role === 'user' ? (nomeAluno || 'Você') : 'Faísca';
+  const corpo = document.createElement('div');
+  corpo.textContent = texto;
+  div.appendChild(quem); div.appendChild(corpo);
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+function bolhaPensando() {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg tutor pensando';
+  div.innerHTML = 'acendendo <span class="ponto">⚡</span><span class="ponto">⚡</span><span class="ponto">⚡</span>';
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+function conteudoUsuario(texto, incluirDocs) {
+  if (!incluirDocs || !arquivos.length) return texto;
+  const blocos = arquivos.map(a => ({
+    type: 'document',
+    source: { type: 'base64', media_type: 'application/pdf', data: a.base64 }
+  }));
+  blocos.push({ type: 'text', text: texto });
+  return blocos;
+}
+async function chamarAPI(mensagens) {
+  const url = WORKER_URL || 'https://api.anthropic.com/v1/messages';
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        system: systemPrompt(),
+        messages: mensagens
+      })
+    });
+  } catch (e) {
+    throw new Error('SEM_CONEXAO');
+  }
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message || 'erro da API');
+  return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+}
+function msgErro(e) {
+  if (e.message === 'SEM_CONEXAO') {
+    return WORKER_URL
+      ? 'Não consegui falar com o servidor do Faísca. Verifique sua internet e tente de novo.'
+      : 'Não consegui falar com a IA. Sem servidor configurado (WORKER_URL), este app só funciona aberto dentro do Claude como artifact. Para publicar no GitHub Pages, configure o Cloudflare Worker e cole a URL dele no topo do código.';
+  }
+  return 'A IA não respondeu agora (' + e.message + '). Tente de novo em instantes.';
+}
+async function enviar() {
+  const input = document.getElementById('texto');
+  const texto = input.value.trim();
+  if (!texto) return;
+  const btn = document.getElementById('enviar');
+  btn.disabled = true;
+  input.value = '';
+  const primeiraVez = historico.length === 0;
+  historico.push({ role: 'user', content: conteudoUsuario(texto, primeiraVez) });
+  addBolha('user', texto);
+  const pensando = bolhaPensando();
+  try {
+    const resposta = await chamarAPI(historico);
+    historico.push({ role: 'assistant', content: resposta });
+    pensando.remove();
+    addBolha('assistant', resposta);
+  } catch (e) {
+    pensando.remove();
+    historico.pop();
+    addBolha('assistant', msgErro(e), 'aviso-sistema');
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+/* ================= FECHAR SESSÃO ================= */
+async function fecharSessao() {
+  if (historico.length < 2) { alert('Converse um pouco antes de fechar a sessão.'); return; }
+  const pensando = bolhaPensando();
+  const pedido = {
+    role: 'user',
+    content: 'Encerre a sessão. Escreva, para MIM (o aluno), um resumo curto do caminho que EU percorri: os passos de raciocínio que eu mesmo dei, os pontos que ficaram em aberto, e uma pergunta final para eu levar comigo. Não entregue nenhuma resposta que eu não tenha construído. Fale comigo diretamente.'
+  };
+  try {
+    const resumo = await chamarAPI([...historico, pedido]);
+    pensando.remove();
+    addBolha('assistant', resumo, 'resumo');
+  } catch (e) {
+    pensando.remove();
+    addBolha('assistant', msgErro(e), 'aviso-sistema');
+  }
+}
+
+/* ================= SALVAR / REABRIR ================= */
+function historicoTexto() {
+  return historico.map(m => ({
+    role: m.role,
+    content: typeof m.content === 'string' ? m.content
+      : m.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
+  }));
+}
+function salvarArquivo() {
+  if (!historico.length) { alert('Ainda não há conversa.'); return; }
+  const dados = {
+    app: 'Faisca', versao: 1,
+    data: new Date().toISOString(),
+    nome: nomeAluno, perfil,
+    tema: document.documentElement.getAttribute('data-tema'),
+    materiais: arquivos.map(a => a.nome),
+    historico: historicoTexto()
+  };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'faisca_conversa.json';
+  a.click();
+  // também em txt legível
+  let txt = 'FAÍSCA · registro da conversa\nData: ' + new Date().toLocaleString('pt-BR') + '\n';
+  if (nomeAluno) txt += 'Aluno: ' + nomeAluno + '\n';
+  txt += '\n' + historicoTexto().map(m =>
+    (m.role === 'user' ? (nomeAluno || 'ALUNO') : 'FAÍSCA') + ':\n' + m.content).join('\n\n');
+  const blob2 = new Blob([txt], { type: 'text/plain' });
+  const a2 = document.createElement('a');
+  a2.href = URL.createObjectURL(blob2);
+  a2.download = 'faisca_conversa.txt';
+  a2.click();
+}
+document.getElementById('abrir-salvo').addEventListener('click', () =>
+  document.getElementById('input-json').click());
+document.getElementById('input-json').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const dados = JSON.parse(await f.text());
+    if (dados.app !== 'Faisca' || !Array.isArray(dados.historico)) throw new Error();
+    nomeAluno = dados.nome || '';
+    perfil = dados.perfil || 'guia';
+    if (dados.tema) document.documentElement.setAttribute('data-tema', dados.tema);
+    historico = dados.historico.map(m => ({ role: m.role, content: m.content }));
+    entrarNoApp();
+    document.getElementById('chat').innerHTML = '';
+    for (const m of historico) addBolha(m.role, m.content);
+    if (dados.materiais && dados.materiais.length) {
+      addBolha('assistant',
+        'Conversa restaurada. Atenção: os PDFs (' + dados.materiais.join(', ') + ') não são salvos no arquivo. Se quiser que eu volte a citar páginas, recomece uma sessão nova anexando o material.',
+        'aviso-sistema');
+    }
+  } catch {
+    alert('Este arquivo não é uma conversa do Faísca.');
+  }
+});
+
+/* ================= TECLADO ================= */
+document.getElementById('texto').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+});
+</script>
+</body>
+</html>
