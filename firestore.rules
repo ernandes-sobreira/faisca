@@ -3,28 +3,44 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function logado() { return request.auth != null; }
-    function professor() { return logado() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    function comGoogle() {
+      return logado() && request.auth.token.firebase.sign_in_provider != 'anonymous' && request.auth.token.email_verified == true;
+    }
+    function fichaProf() { return /databases/$(database)/documents/professores/$(request.auth.token.email); }
+    // Professor autorizado: conta Google que consta na lista de professores.
+    function autorizado() { return comGoogle() && exists(fichaProf()); }
+    function admin() { return autorizado() && get(fichaProf()).data.admin == true; }
     function donoDaAula(id) {
       return logado() && get(/databases/$(database)/documents/aulas/$(id)).data.profUid == request.auth.uid;
+    }
+
+    // Lista de professores autorizados. O id do documento é o e-mail. Só administradores gerenciam.
+    match /professores/{email} {
+      allow get: if comGoogle() && request.auth.token.email == email;
+      allow list: if admin();
+      allow create: if admin() && request.resource.data.admin == false;
+      allow delete: if admin() && resource.data.admin != true;
     }
 
     // Disciplina: o aluno lê (nome, turma e plano de ensino) quando abre uma aula. Só o dono lista e altera.
     match /disciplinas/{id} {
       allow get: if logado();
-      allow list: if professor() && resource.data.profUid == request.auth.uid;
-      allow create: if professor() && request.resource.data.profUid == request.auth.uid;
-      allow update, delete: if professor() && resource.data.profUid == request.auth.uid;
+      allow list: if comGoogle() && resource.data.profUid == request.auth.uid;
+      allow create: if autorizado() && request.resource.data.profUid == request.auth.uid;
+      allow update: if autorizado() && resource.data.profUid == request.auth.uid && request.resource.data.profUid == request.auth.uid;
+      allow delete: if autorizado() && resource.data.profUid == request.auth.uid;
     }
 
     // Aula: o aluno abre pelo código. Só o dono lista e altera.
     match /aulas/{id} {
       allow get: if logado();
-      allow list: if professor() && resource.data.profUid == request.auth.uid;
-      allow create: if professor() && request.resource.data.profUid == request.auth.uid;
-      allow update, delete: if professor() && resource.data.profUid == request.auth.uid;
+      allow list: if comGoogle() && resource.data.profUid == request.auth.uid;
+      allow create: if autorizado() && request.resource.data.profUid == request.auth.uid;
+      allow update: if autorizado() && resource.data.profUid == request.auth.uid && request.resource.data.profUid == request.auth.uid;
+      allow delete: if autorizado() && resource.data.profUid == request.auth.uid;
 
       match /sessoes/{uid} {
-        // Cada aluno lê e escreve só a própria sessão. O professor dono da aula lê todas.
+        // Cada aluno lê e escreve só a própria sessão. O professor dono da aula lê e apaga todas.
         allow get, create, update: if logado() && request.auth.uid == uid;
         allow read, delete: if donoDaAula(id);
       }

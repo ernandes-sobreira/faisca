@@ -395,6 +395,11 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
     <button class="btn-grande" id="prof-entrar">Entrar com Google</button>
   </div>
 
+  <div id="prof-negado" class="oculto painel-card" style="max-width:560px;margin:40px auto;text-align:center">
+    <h2>Conta ainda não autorizada</h2>
+    <p class="sub" id="negado-texto"></p>
+  </div>
+
   <!-- minhas disciplinas -->
   <div id="prof-casa" class="oculto">
     <div class="painel-card">
@@ -412,6 +417,16 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
       <button class="btn-grande" id="nd-criar" style="max-width:320px">Criar disciplina</button>
     </div>
     <div class="painel-card"><h2>Minhas disciplinas</h2><div id="lista-disciplinas"></div></div>
+    <div class="painel-card oculto" id="adm-card">
+      <h2>Professores autorizados</h2>
+      <p class="sub">Só quem está nesta lista cria disciplinas e aulas. O professor entra com a conta Google deste e-mail.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="campo" id="adm-email" type="email" placeholder="email@instituicao.br" style="max-width:360px" autocomplete="off">
+        <button class="btn cor" id="adm-add">Autorizar</button>
+      </div>
+      <div id="adm-erro" class="estado erro oculto"></div>
+      <div id="adm-lista"></div>
+    </div>
   </div>
 
   <!-- uma disciplina: aulas -->
@@ -422,6 +437,15 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
       <label class="rotulo" for="dc-plano">Enviar ou trocar o plano de ensino (PDF)</label>
       <input class="campo" id="dc-plano" type="file" accept="application/pdf" style="max-width:520px">
       <span class="quem-sou" id="dc-plano-estado" style="margin-left:10px"></span>
+      <div class="grade2" style="margin-top:6px">
+        <div><label class="rotulo" for="dc-ed-nome">Nome da disciplina</label><input class="campo" id="dc-ed-nome" maxlength="120"></div>
+        <div><label class="rotulo" for="dc-ed-publico">Turma ou nível</label><input class="campo" id="dc-ed-publico" maxlength="120"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+        <button class="btn cor" id="dc-salvar">Salvar alterações</button>
+        <button class="btn" id="dc-excluir">Excluir disciplina</button>
+        <span class="quem-sou" id="dc-ed-estado"></span>
+      </div>
     </div>
     <div class="painel-card">
       <h2>Aulas</h2>
@@ -473,6 +497,26 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
           <p class="nota" id="pn-material"></p>
         </div>
       </div>
+    </div>
+    <div class="painel-card">
+      <h2>Editar aula</h2>
+      <p class="sub" id="pe-situacao"></p>
+      <div class="grade2">
+        <div><label class="rotulo" for="pe-titulo">Título da aula</label><input class="campo" id="pe-titulo" maxlength="120"></div>
+        <div><label class="rotulo" for="pe-minutos">Tempo da situação-problema (minutos)</label><input class="campo" id="pe-minutos" type="number" min="5" max="60"></div>
+      </div>
+      <label class="rotulo" for="pe-pdf">Trocar o material da aula (PDF, opcional)</label>
+      <input class="campo" id="pe-pdf" type="file" accept="application/pdf">
+      <span class="rotulo">Situações-problema</span>
+      <div id="pe-problemas"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+        <button class="btn" id="pe-mais">+ Adicionar situação-problema</button>
+        <button class="btn cor" id="pe-salvar">Salvar alterações</button>
+        <button class="btn" id="pe-encerrar">Encerrar aula</button>
+        <button class="btn" id="pe-excluir">Excluir aula</button>
+      </div>
+      <div id="pe-erro" class="estado erro oculto"></div>
+      <span class="quem-sou" id="pe-estado"></span>
     </div>
     <div class="painel-card">
       <h2>Quem fez e como chegou</h2>
@@ -682,7 +726,8 @@ function referencia() {
 /* ================= API ================= */
 async function chamarAPI(mensagens, opcoes) {
   const o = opcoes || {};
-  let resp;
+  let resp, token = '';
+  try { if (auth && auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (e) { console.error(e); }
   try {
     resp = await fetch(WORKER_URL, {
       method: 'POST',
@@ -691,7 +736,9 @@ async function chamarAPI(mensagens, opcoes) {
         system: o.system || systemPrompt(),
         material: o.semMaterial ? '' : referencia(),
         messages: mensagens,
-        aluno: o.quem || S.uid || '',
+        token,
+        tipo: o.tipo || (S.modo === 'livre' ? 'livre' : 'aluno'),
+        aula: S.aula ? S.aula.codigo : '',
         max_tokens: o.maxTokens || 700
       })
     });
@@ -1021,6 +1068,7 @@ async function abrirAula(codigo) {
     const doc = await db.collection('aulas').doc(codigo).get();
     if (!doc.exists) { estadoTarefa('vazio', 'Não encontrei nenhuma aula com o código ' + codigo + '. Confira com seu professor.'); return; }
     const a = doc.data();
+    if (a.aberta === false) { estadoTarefa('vazio', 'Esta aula foi encerrada pelo professor.'); return; }
     const dDoc = await db.collection('disciplinas').doc(a.disciplinaId).get();
     const d = dDoc.exists ? dDoc.data() : {};
     S.aula = {
@@ -1066,9 +1114,12 @@ $('entrar-codigo').addEventListener('click', () => {
 });
 $('codigo').addEventListener('keydown', e => { if (e.key === 'Enter') $('entrar-codigo').click(); });
 $('ir-prof').addEventListener('click', () => { location.search = '?prof=1'; });
-function comecarLivre() {
+async function comecarLivre() {
   const tema = $('tema-livre').value.trim();
   if (tema.length < 4) { $('tema-livre').focus(); return; }
+  if (firebaseDisponivel()) {
+    try { if (!(await usuarioAtual())) await auth.signInAnonymously(); } catch (e) { console.error(e); }
+  }
   S.aula = null; S.uid = 'livre'; S.modo = 'livre';
   S.tarefa = { titulo: 'Tema livre', enunciado: tema, minutos: MINUTOS_PADRAO };
   try { localStorage.removeItem(chaveLocal('livre')); } catch {}
@@ -1078,8 +1129,8 @@ $('comecar-livre').addEventListener('click', comecarLivre);
 $('tema-livre').addEventListener('keydown', e => { if (e.key === 'Enter') comecarLivre(); });
 
 /* ================= PROFESSOR ================= */
-const P = { user: null, disciplina: null, aulas: [], aula: null, sessoes: [], pararEscuta: null };
-const SECOES_PROF = ['prof-login', 'prof-casa', 'prof-disc', 'prof-painel'];
+const P = { user: null, admin: false, disciplina: null, aulas: [], aula: null, sessoes: [], pararEscuta: null };
+const SECOES_PROF = ['prof-login', 'prof-negado', 'prof-casa', 'prof-disc', 'prof-painel'];
 function estadoProf(tipo, texto) {
   $('prof-estado').className = 'estado ' + (tipo || ''); $('prof-estado').textContent = texto || '';
   $('prof-estado').classList.toggle('oculto', !tipo);
@@ -1102,9 +1153,58 @@ async function iniciarProfessor() {
     P.user = u;
     $('prof-quem').textContent = u.displayName || u.email || '';
     $('prof-sair').classList.remove('oculto');
-    rotearProf();
+    verificarAcesso();
   });
 }
+async function verificarAcesso() {
+  secaoProf(null); estadoProf('carregando', 'Verificando seu acesso...');
+  try {
+    const ficha = await db.collection('professores').doc(P.user.email || '-').get();
+    estadoProf(null);
+    if (!ficha.exists) {
+      $('negado-texto').textContent = 'A conta ' + (P.user.email || '') + ' não está na lista de professores autorizados. Peça a liberação ao responsável pelo Faísca na sua instituição.';
+      secaoProf('prof-negado'); return;
+    }
+    P.admin = ficha.data().admin === true;
+    rotearProf();
+  } catch (e) { console.error(e); estadoProf('erro', 'Não foi possível verificar seu acesso. Confira a conexão e recarregue.'); }
+}
+function confirmarEm(botao, acao) {
+  if (botao.dataset.confirma) { delete botao.dataset.confirma; acao(); return; }
+  const rotulo = botao.textContent;
+  botao.dataset.confirma = '1'; botao.textContent = 'Clique de novo para confirmar';
+  setTimeout(() => { if (botao.dataset.confirma) { delete botao.dataset.confirma; botao.textContent = rotulo; } }, 5000);
+}
+async function carregarAdmin() {
+  $('adm-card').classList.toggle('oculto', !P.admin);
+  if (!P.admin) return;
+  const lista = $('adm-lista'); lista.textContent = ''; avisar('adm-erro', '');
+  try {
+    const snap = await db.collection('professores').get();
+    snap.docs.map(d => ({ email: d.id, admin: d.data().admin === true })).sort((a, b) => a.email.localeCompare(b.email)).forEach(f => {
+      const item = el('div', 'item-tarefa');
+      const txt = el('div'); txt.appendChild(el('b', null, f.email)); txt.appendChild(el('small', null, f.admin ? 'Administrador' : 'Professor'));
+      item.appendChild(txt);
+      if (!f.admin) {
+        const b = el('button', 'btn', 'Remover');
+        b.onclick = () => confirmarEm(b, async () => {
+          try { await db.collection('professores').doc(f.email).delete(); carregarAdmin(); }
+          catch (e) { console.error(e); avisar('adm-erro', 'Não foi possível remover. Tente de novo.'); }
+        });
+        item.appendChild(b);
+      }
+      lista.appendChild(item);
+    });
+  } catch (e) { console.error(e); avisar('adm-erro', 'Falha ao carregar a lista de professores.'); }
+}
+$('adm-add').addEventListener('click', async () => {
+  const email = $('adm-email').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { avisar('adm-erro', 'Digite um e-mail válido.'); return; }
+  try {
+    await db.collection('professores').doc(email).set({ admin: false, autorizadoPor: P.user.email || '', autorizadoEm: agoraServidor() });
+    $('adm-email').value = ''; carregarAdmin();
+  } catch (e) { console.error(e); avisar('adm-erro', 'Não foi possível autorizar. Tente de novo.'); }
+});
 $('prof-entrar').addEventListener('click', async () => {
   try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
   catch (e) { console.error(e); estadoProf('erro', 'Não foi possível entrar com o Google. Libere pop-ups para este site e tente de novo.'); }
@@ -1157,6 +1257,7 @@ async function abrirCasa() {
     const snap = await db.collection('disciplinas').where('profUid', '==', P.user.uid).get();
     const ds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
     estadoProf(null);
+    carregarAdmin();
     if (!ds.length) { lista.appendChild(el('div', 'estado vazio', 'Você ainda não criou nenhuma disciplina.')); return; }
     ds.forEach(d => {
       const item = el('div', 'item-tarefa');
@@ -1190,6 +1291,7 @@ $('nd-criar').addEventListener('click', async () => {
 function infoDisciplina() {
   const d = P.disciplina;
   $('dc-nome').textContent = d.nome;
+  $('dc-ed-nome').value = d.nome || ''; $('dc-ed-publico').value = d.publico || ''; $('dc-ed-estado').textContent = '';
   $('dc-info').textContent = (d.publico || 'Sem turma informada') + ' · ' + (d.planoNome ? 'Plano de ensino: ' + d.planoNome + ' (' + d.planoPaginas + (d.planoPaginas === 1 ? ' página)' : ' páginas)') : 'Sem plano de ensino. Sem ele, o Faísca não responde sobre avaliação, conteúdos e bibliografia.');
 }
 async function abrirDisciplina(id) {
@@ -1242,17 +1344,34 @@ $('dc-plano').addEventListener('change', async () => {
   } catch (e) { console.error(e); $('dc-plano-estado').textContent = textoErroPDF(e) || 'Não foi possível enviar o plano.'; }
   $('dc-plano').value = '';
 });
-function addCampoProblema(texto) {
+$('dc-salvar').addEventListener('click', async () => {
+  const nome = $('dc-ed-nome').value.trim(), publico = $('dc-ed-publico').value.trim();
+  if (nome.length < 3) { $('dc-ed-estado').textContent = 'Dê um nome para a disciplina.'; return; }
+  try {
+    await db.collection('disciplinas').doc(P.disciplina.id).update({ nome, publico });
+    for (const a of P.aulas) await db.collection('aulas').doc(a.id).update({ disciplinaNome: nome });
+    Object.assign(P.disciplina, { nome, publico }); infoDisciplina(); $('dc-ed-estado').textContent = 'Alterações salvas.';
+  } catch (e) { console.error(e); $('dc-ed-estado').textContent = 'Não foi possível salvar. Tente de novo.'; }
+});
+$('dc-excluir').addEventListener('click', () => {
+  if (P.aulas.length) { $('dc-ed-estado').textContent = 'Exclua primeiro as aulas desta disciplina.'; return; }
+  confirmarEm($('dc-excluir'), async () => {
+    try { await db.collection('disciplinas').doc(P.disciplina.id).delete(); irPara('?prof=1'); }
+    catch (e) { console.error(e); $('dc-ed-estado').textContent = 'Não foi possível excluir. Tente de novo.'; }
+  });
+});
+function addCampoProblema(texto, alvo) {
+  alvo = alvo || 'na-problemas';
   const caixa = el('div', 'problema-item');
   const cab = el('div', 'cab'); cab.appendChild(el('span', 'num'));
-  const rm = el('button', null, 'remover'); rm.onclick = () => { caixa.remove(); numerarProblemas(); };
+  const rm = el('button', null, 'remover'); rm.onclick = () => { caixa.remove(); numerarProblemas(alvo); };
   cab.appendChild(rm); caixa.appendChild(cab);
   const ta = el('textarea', 'campo'); ta.maxLength = 2000; ta.value = texto || '';
   ta.placeholder = 'Descreva a situação e o que o aluno deve concluir ou decidir.';
-  caixa.appendChild(ta); $('na-problemas').appendChild(caixa); numerarProblemas();
+  caixa.appendChild(ta); $(alvo).appendChild(caixa); numerarProblemas(alvo);
 }
-function numerarProblemas() { $('na-problemas').querySelectorAll('.num').forEach((s, i) => { s.textContent = 'Situação-problema ' + (i + 1); }); }
-function lerProblemas() { return Array.from($('na-problemas').querySelectorAll('textarea')).map(t => t.value.trim()).filter(t => t.length >= 10); }
+function numerarProblemas(alvo) { $(alvo || 'na-problemas').querySelectorAll('.num').forEach((s, i) => { s.textContent = 'Situação-problema ' + (i + 1); }); }
+function lerProblemas(alvo) { return Array.from($(alvo || 'na-problemas').querySelectorAll('textarea')).map(t => t.value.trim()).filter(t => t.length >= 10); }
 $('na-mais').addEventListener('click', () => addCampoProblema(''));
 $('na-variar').addEventListener('click', async () => {
   const base = lerProblemas()[0];
@@ -1265,7 +1384,7 @@ Situação-problema original escrita pelo professor:
 
 Escreva 3 variações desta situação-problema. Cada variação deve exigir o MESMO conceito e ter a MESMA dificuldade, mudando o contexto ou os dados, para que cada aluno receba uma diferente. Use casos hipotéticos e genéricos. Não cite números, lugares, autores ou estudos reais. Responda SOMENTE com JSON válido:
 {"variacoes": ["...", "...", "..."]}` }],
-      { system: 'Você redige rascunhos de situações-problema para um professor revisar. Não invente dados reais.', semMaterial: true, quem: 'prof:' + P.user.uid, maxTokens: 1400 });
+      { system: 'Você redige rascunhos de situações-problema para um professor revisar. Não invente dados reais.', semMaterial: true, tipo: 'prof', maxTokens: 1400 });
     const j = extrairJSON(bruto);
     const vs = j && Array.isArray(j.variacoes) ? j.variacoes.filter(v => typeof v === 'string' && v.trim().length >= 10).slice(0, 3) : [];
     if (!vs.length) throw new Error('formato inesperado');
@@ -1288,7 +1407,7 @@ $('na-criar').addEventListener('click', async () => {
     while ((await db.collection('aulas').doc(codigo).get()).exists) codigo = novoCodigo();
     await db.collection('aulas').doc(codigo).set({
       titulo, minutos, problemas, material: mat.texto, materialNome: mat.nome, paginas: mat.paginas,
-      disciplinaId: P.disciplina.id, disciplinaNome: P.disciplina.nome,
+      aberta: true, disciplinaId: P.disciplina.id, disciplinaNome: P.disciplina.nome,
       profUid: P.user.uid, profNome: P.user.displayName || '', criadaEm: agoraServidor()
     });
     ['na-titulo', 'na-pdf'].forEach(i => { $(i).value = ''; });
@@ -1313,12 +1432,8 @@ async function abrirPainel(codigo) {
     P.aula = a; P.sessoes = [];
     estadoProf(null); secaoProf('prof-painel');
     const link = location.origin + location.pathname + '?t=' + codigo;
-    $('pn-titulo').textContent = a.titulo;
-    $('pn-enunciado').textContent = a.disciplinaNome || '';
     $('pn-link').value = link; $('pn-codigo').textContent = codigo;
-    const np = (a.problemas || []).length;
-    $('pn-material').textContent = (a.materialNome ? 'Material: ' + a.materialNome + ' (' + a.paginas + (a.paginas === 1 ? ' página). ' : ' páginas). ') : 'Sem material anexado. ') +
-      (np ? np + (np === 1 ? ' situação-problema, ' : ' situações-problema, uma por aluno por sorteio, ') + a.minutos + ' minutos.' : 'Sem situação-problema: aula só com dúvidas.');
+    cabecalhoPainel();
     desenharQR(link);
     renderGrupos(CFG_ERROS); renderGrupos(CFG_DUVIDAS);
     $('pn-sessoes-estado').className = 'estado carregando'; $('pn-sessoes-estado').textContent = 'Carregando a turma...';
@@ -1326,7 +1441,7 @@ async function abrirPainel(codigo) {
     P.pararEscuta = db.collection('aulas').doc(codigo).collection('sessoes').onSnapshot(snap => {
       P.sessoes = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
         .sort((x, y) => String(x.nome || '').localeCompare(String(y.nome || ''), 'pt-BR'));
-      renderSessoes(); renderGrupos(CFG_ERROS); renderGrupos(CFG_DUVIDAS);
+      renderSessoes(); renderGrupos(CFG_ERROS); renderGrupos(CFG_DUVIDAS); travarProblemas();
     }, e => {
       console.error(e);
       $('pn-sessoes-estado').className = 'estado erro'; $('pn-sessoes-estado').textContent = 'Falha ao carregar a turma. Recarregue a página.';
@@ -1334,6 +1449,61 @@ async function abrirPainel(codigo) {
     });
   } catch (e) { console.error(e); estadoProf('erro', 'Falha ao abrir o painel. Confira a conexão e recarregue.'); }
 }
+// Com alunos na aula, as situações já sorteadas não podem ser removidas (só editadas).
+function travarProblemas() {
+  if (P.sessoes.length) $('pe-problemas').querySelectorAll('.problema-item[data-orig] .cab button').forEach(b => b.remove());
+}
+function cabecalhoPainel() {
+  const a = P.aula, np = (a.problemas || []).length, aberta = a.aberta !== false;
+  $('pn-titulo').textContent = a.titulo + (aberta ? '' : ' (encerrada)');
+  $('pn-enunciado').textContent = a.disciplinaNome || '';
+  $('pn-material').textContent = (a.materialNome ? 'Material: ' + a.materialNome + ' (' + a.paginas + (a.paginas === 1 ? ' página). ' : ' páginas). ') : 'Sem material anexado. ') +
+    (np ? np + (np === 1 ? ' situação-problema, ' : ' situações-problema, uma por aluno por sorteio, ') + a.minutos + ' minutos.' : 'Sem situação-problema: aula só com dúvidas.');
+  $('pe-titulo').value = a.titulo; $('pe-minutos').value = a.minutos; $('pe-pdf').value = '';
+  $('pe-problemas').textContent = ''; (a.problemas || []).forEach(t => addCampoProblema(t, 'pe-problemas'));
+  $('pe-problemas').querySelectorAll('.problema-item').forEach(c => { c.dataset.orig = '1'; }); travarProblemas();
+  $('pe-situacao').textContent = aberta ? 'A aula está aberta: os alunos entram pelo link.' : 'A aula está encerrada: o link não aceita mais alunos.';
+  $('pe-encerrar').textContent = aberta ? 'Encerrar aula' : 'Reabrir aula';
+  avisar('pe-erro', ''); $('pe-estado').textContent = '';
+}
+$('pe-mais').addEventListener('click', () => addCampoProblema('', 'pe-problemas'));
+$('pe-salvar').addEventListener('click', async () => {
+  avisar('pe-erro', ''); $('pe-estado').textContent = '';
+  const titulo = $('pe-titulo').value.trim();
+  const minutos = Math.min(60, Math.max(5, parseInt($('pe-minutos').value, 10) || MINUTOS_PADRAO));
+  const problemas = lerProblemas('pe-problemas');
+  if (titulo.length < 3) { avisar('pe-erro', 'Dê um título para a aula.'); return; }
+  if (P.sessoes.length && problemas.length < (P.aula.problemas || []).length) {
+    avisar('pe-erro', 'Já há alunos nesta aula. Você pode editar o texto e acrescentar situações-problema, mas não remover, porque cada aluno já recebeu a sua.'); return;
+  }
+  const botao = $('pe-salvar'); botao.disabled = true;
+  try {
+    const mudanca = { titulo, minutos, problemas };
+    if ($('pe-pdf').files[0]) {
+      const m = await extrairPDF($('pe-pdf').files[0], LIMITE_MATERIAL);
+      Object.assign(mudanca, { material: m.texto, materialNome: m.nome, paginas: m.paginas });
+    }
+    await db.collection('aulas').doc(P.aula.id).update(mudanca);
+    Object.assign(P.aula, mudanca); cabecalhoPainel(); renderSessoes();
+    $('pe-estado').textContent = 'Alterações salvas.';
+  } catch (e) { console.error(e); avisar('pe-erro', textoErroPDF(e) || 'Não foi possível salvar. Confira a conexão e tente de novo.'); }
+  finally { botao.disabled = false; }
+});
+$('pe-encerrar').addEventListener('click', async () => {
+  const aberta = P.aula.aberta === false;
+  try { await db.collection('aulas').doc(P.aula.id).update({ aberta }); P.aula.aberta = aberta; cabecalhoPainel(); }
+  catch (e) { console.error(e); avisar('pe-erro', 'Não foi possível alterar a situação da aula.'); }
+});
+$('pe-excluir').addEventListener('click', () => confirmarEm($('pe-excluir'), async () => {
+  const id = P.aula.id, disc = P.aula.disciplinaId;
+  try {
+    pararEscuta();
+    const ss = await db.collection('aulas').doc(id).collection('sessoes').get();
+    for (const d of ss.docs) await db.collection('aulas').doc(id).collection('sessoes').doc(d.id).delete();
+    await db.collection('aulas').doc(id).delete();
+    irPara('?d=' + disc);
+  } catch (e) { console.error(e); avisar('pe-erro', 'Não foi possível excluir a aula. Recarregue e tente de novo.'); }
+}));
 async function desenharQR(link) {
   const alvo = $('qr'); alvo.textContent = '';
   try {
@@ -1436,7 +1606,7 @@ ${lista}
 
 ${cfg.regra} Só junte quando for de fato o mesmo assunto. Cada número deve aparecer em exatamente um grupo. Responda SOMENTE com JSON válido:
 {"grupos": [{"rotulo": "${cfg.nome}", "itens": [0, 3]}]}` }],
-      { system: 'Você organiza registros de uma turma para um professor. Você não avalia alunos, não atribui nota e não sugere nota.', semMaterial: true, quem: 'prof:' + P.user.uid, maxTokens: 1500 });
+      { system: 'Você organiza registros de uma turma para um professor. Você não avalia alunos, não atribui nota e não sugere nota.', semMaterial: true, tipo: 'prof', maxTokens: 1500 });
     const j = extrairJSON(bruto);
     if (!j || !Array.isArray(j.grupos)) throw new Error('formato inesperado');
     const usados = new Set(), grupos = [];
