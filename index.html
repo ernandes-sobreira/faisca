@@ -325,6 +325,7 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
       </div>
       <p class="nota">O que seu professor vê: seu nome, as dúvidas que você perguntou e a conversa da situação-problema, com sua resposta do início e a do fim. Ele vê isso para saber como você chegou à conclusão. O Faísca não dá nota.</p>
     </div>
+    <div><button class="link-btn" id="sair-aula">← Início (entrar em outra aula)</button></div>
     <p class="creditos">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
   </div>
 </section>
@@ -381,6 +382,7 @@ td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
     <span class="logo">Faísc<span class="grad-txt">a</span>⚡ <span style="font-size:15px;font-weight:600;color:var(--suave)">área do professor</span></span>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span class="quem-sou" id="prof-quem"></span>
+      <button class="btn" id="prof-inicio">Início</button>
       <button class="btn oculto" id="prof-voltar">← Voltar</button>
       <button class="btn oculto" id="prof-sair">Sair</button>
     </div>
@@ -617,6 +619,8 @@ REFERÊNCIAS EXTERNAS: só autores e obras consolidados que você tem alta confi
 CUIDADO EMOCIONAL: caloroso na medida certa, sem virar consolo repetitivo. Você não é terapeuta. Se o aluno expressar sofrimento sério, reconheça com gentileza e sugira UMA vez procurar o apoio ao estudante ou alguém de confiança. Se houver qualquer menção a se machucar, oriente com carinho a buscar ajuda imediatamente (no Brasil, o CVV atende no 188, de graça, a qualquer hora) e não siga a conversa como se nada tivesse acontecido.
 ${S.humor ? INSTRUCAO_HUMOR[S.humor] : ''}
 
+FORMATO: texto simples de conversa. Não use markdown, asteriscos, títulos nem listas. Não use travessão: prefira vírgula ou ponto.
+
 TOM: direto, jovem sem forçar. PROIBIDO elogio vazio ("ótima pergunta", "excelente"). Nunca humilhe, nunca use sarcasmo. Você não dá nota, conceito nem avaliação do aluno.
 
 ${TOM_PERFIL[S.perfil]}`;
@@ -707,8 +711,11 @@ function msgErro(e) {
 const MARCADOR = { aluno: '🧑', travei: '🧗', tutor: '⚡', fecho: '🗺️', aviso: '⚠️' };
 const QUEM = { travei: 'Pedido de pista', tutor: 'Faísca', fecho: 'Antes e depois', aviso: 'Aviso' };
 function renderCorpo(alvo, texto) {
-  String(texto).split(/\{\{([^{}]+)\}\}/g).forEach((parte, i) => {
-    if (i % 2 === 0) { alvo.appendChild(document.createTextNode(parte)); return; }
+  String(texto).replace(/\s+[\u2014\u2013]\s+/g, ', ').split(/\{\{([^{}]+)\}\}/g).forEach((parte, i) => {
+    if (i % 2 === 0) {
+      parte.split(/\*\*([^*]+)\*\*/g).forEach((t, k) => alvo.appendChild(k % 2 ? el('b', null, t) : document.createTextNode(t)));
+      return;
+    }
     const a = el('a', 'pilula', '🔎 ' + parte.trim());
     a.href = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(parte.trim());
     a.target = '_blank'; a.rel = 'noopener';
@@ -941,7 +948,7 @@ function iniciarModo(modo) {
   mostrar('app');
   const ehDuvida = modo === 'duvida';
   ['relogio', 'fechar', 'travei', 'barra-tempo'].forEach(i => $(i).classList.toggle('oculto', ehDuvida));
-  $('voltar-aula').classList.toggle('oculto', modo === 'livre');
+  $('voltar-aula').textContent = modo === 'livre' ? '← Início' : '← Aula';
   $('texto').disabled = false; $('enviar').disabled = false; $('travei').disabled = false;
   $('texto').placeholder = ehDuvida ? 'Qual é a sua dúvida?' : 'Escreva do seu jeito...';
   $('faixa-titulo').textContent = S.tarefa.titulo;
@@ -957,7 +964,9 @@ function iniciarModo(modo) {
   }
   if (!S.concluida) $('texto').focus();
 }
+function irParaInicio() { clearInterval(relogioId); location.href = location.pathname; }
 function voltarParaAula() {
+  if (S.modo === 'livre') { irParaInicio(); return; }
   clearInterval(relogioId);
   mostrar('tela-tarefa'); mostrarHub();
 }
@@ -981,6 +990,7 @@ $('travei').addEventListener('click', travei);
 $('fechar').addEventListener('click', abrirFechamento);
 $('baixar').addEventListener('click', baixarConversa);
 $('voltar-aula').addEventListener('click', voltarParaAula);
+$('sair-aula').addEventListener('click', irParaInicio);
 $('texto').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } });
 
 /* ================= ALUNO: ENTRADA PELO CÓDIGO DA AULA ================= */
@@ -1100,6 +1110,7 @@ $('prof-entrar').addEventListener('click', async () => {
   catch (e) { console.error(e); estadoProf('erro', 'Não foi possível entrar com o Google. Libere pop-ups para este site e tente de novo.'); }
 });
 $('prof-sair').addEventListener('click', () => auth.signOut());
+$('prof-inicio').addEventListener('click', () => { location.href = location.pathname; });
 $('prof-voltar').addEventListener('click', () => {
   if (!$('prof-painel').classList.contains('oculto') && P.aula) irPara('?d=' + P.aula.disciplinaId); else irPara('?prof=1');
 });
