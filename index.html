@@ -6,6 +6,9 @@
 <title>Faísca · pense com a IA, não pela IA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root, [data-tema="vitamina"] {
   --p1: #7c3aed; --p2: #ec4899; --p3: #f59e0b; --p4: #10b981;
@@ -23,24 +26,25 @@
   --p1: #2563eb; --p2: #06b6d4; --p3: #6366f1; --p4: #14b8a6;
   --tint1: #e9f0fe; --tint2: #e6f9fd; --tint3: #edeefe; --tint4: #e6f9f6;
 }
-:root { --branco: #ffffff; --grafite: #1f2330; --cinza: #f5f6fa; --borda: #e5e7f0; }
+:root { --branco: #ffffff; --grafite: #1f2330; --cinza: #f5f6fa; --borda: #e5e7f0; --suave: #6b7080; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { min-height: 100%; }
 body {
   background: var(--branco); color: var(--grafite);
-  font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.65;
+  font-family: 'Inter', system-ui, sans-serif; font-size: 18px; line-height: 1.6;
 }
-h1, h2, .logo { font-family: 'Sora', sans-serif; }
+h1, h2, h3, .logo { font-family: 'Sora', system-ui, sans-serif; }
+button, input, textarea, select { font-family: inherit; }
 .grad-txt {
   background: linear-gradient(90deg, var(--p1), var(--p2), var(--p3));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-button { font-family: inherit; }
+.oculto { display: none !important; }
 
-/* ============ ABERTURA ============ */
-#abertura {
-  position: relative; min-height: 100vh; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 24px 14px; overflow: hidden;
+/* ============ TELAS DE ENTRADA ============ */
+.tela {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 24px 14px;
   background:
     radial-gradient(circle at 12% 8%, var(--tint1) 0%, transparent 30%),
     radial-gradient(circle at 88% 14%, var(--tint2) 0%, transparent 28%),
@@ -48,658 +52,1417 @@ button { font-family: inherit; }
     radial-gradient(circle at 90% 85%, var(--tint3) 0%, transparent 28%),
     var(--branco);
 }
-.estrela {
-  position: absolute; font-size: 20px; opacity: .5; pointer-events: none;
-  animation: pulsar 4s ease-in-out infinite;
-}
-@keyframes pulsar { 0%,100%{ transform: scale(1); opacity:.35 } 50%{ transform: scale(1.25); opacity:.7 } }
-@media (prefers-reduced-motion: reduce) { .estrela { animation: none; } }
-
-#cartao {
-  position: relative; z-index: 2; background: var(--branco);
-  border: 3px solid var(--grafite); border-radius: 24px;
+.cartao {
+  background: var(--branco); border: 3px solid var(--grafite); border-radius: 24px;
   box-shadow: 10px 10px 0 var(--p1);
-  max-width: 580px; width: 100%; padding: 32px 26px; text-align: center;
+  max-width: 560px; width: 100%; padding: 32px 26px; text-align: center;
 }
-.logo-grande { font-size: 50px; font-weight: 800; letter-spacing: -2px; }
+.logo-grande { font-size: 48px; font-weight: 800; letter-spacing: -2px; }
 .raio { display: inline-block; transform: rotate(8deg); }
-.lema { font-size: 18.5px; margin: 8px 0 22px; color: #4a4e5c; }
+.lema { font-size: 18px; margin: 8px 0 22px; color: #4a4e5c; }
 .lema b { color: var(--p2); }
-
-.secao-config { text-align: left; margin-bottom: 18px; }
-.secao-config .titulo {
-  font-family: 'Sora', sans-serif; font-size: 13.5px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 1.5px; color: var(--p1); margin-bottom: 8px;
+.rotulo {
+  display: block; text-align: left; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.4px; color: var(--p1); margin: 16px 0 6px;
 }
-#nome {
-  width: 100%; font-family: inherit; font-size: 18px; padding: 13px 15px;
-  border: 2px solid var(--borda); border-radius: 12px; background: var(--branco);
+.campo {
+  width: 100%; font-size: 17px; padding: 13px 15px;
+  border: 2px solid var(--borda); border-radius: 12px; background: var(--branco); color: var(--grafite);
 }
-#nome:focus { outline: 3px solid var(--p3); border-color: var(--grafite); }
-
-/* check-in emocional */
-.humores { display: flex; gap: 6px; flex-wrap: wrap; }
-.humor {
-  flex: 1; min-width: 86px; cursor: pointer; text-align: center;
-  border: 2px solid var(--borda); border-radius: 14px; padding: 10px 4px 8px;
-  background: var(--branco); transition: all .12s;
-}
-.humor .emoji { font-size: 28px; display: block; }
-.humor .rotulo-h { font-size: 12.5px; font-weight: 600; color: #6b7080; }
-.humor.ativa { border-color: var(--p2); background: var(--tint2); box-shadow: 3px 3px 0 var(--p2); }
-.humor.ativa .rotulo-h { color: var(--grafite); }
-
-.opcoes { display: flex; gap: 8px; flex-wrap: wrap; }
-.opcao {
-  flex: 1; min-width: 140px; text-align: left; cursor: pointer;
-  border: 2px solid var(--borda); border-radius: 14px; padding: 12px 14px;
-  background: var(--branco); font-size: 15px; transition: all .12s;
-}
-.opcao .op-nome { font-weight: 700; font-size: 16px; display: block; }
-.opcao .op-desc { color: #6b7080; font-size: 13.5px; line-height: 1.4; }
-.opcao.ativa { border-color: var(--p1); background: var(--tint1); box-shadow: 3px 3px 0 var(--p1); }
-
-.bolinhas { display: flex; gap: 12px; }
-.bolinha {
-  width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
-  border: 3px solid var(--borda); transition: transform .12s;
-}
-.bolinha:hover { transform: scale(1.12); }
-.bolinha.ativa { border-color: var(--grafite); box-shadow: 0 0 0 3px var(--branco), 0 0 0 6px var(--grafite); }
-.b-vitamina { background: linear-gradient(135deg, #7c3aed, #ec4899, #f59e0b); }
-.b-pantanal { background: linear-gradient(135deg, #0e9f6e, #0ea5e9, #d97706); }
-.b-tropical { background: linear-gradient(135deg, #f43f5e, #fb923c, #8b5cf6); }
-.b-oceano  { background: linear-gradient(135deg, #2563eb, #06b6d4, #14b8a6); }
-
-#zona-upload {
-  border: 2px dashed var(--p4); border-radius: 12px; padding: 13px;
-  font-size: 15px; cursor: pointer; background: var(--tint4);
-}
-.aviso-peso { font-size: 13px; color: #7a7e8c; }
-#lista-arquivos { font-size: 15px; text-align: left; }
-.arquivo-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--cinza); border-radius: 8px; padding: 8px 12px; margin-top: 6px;
-}
-.arquivo-item button { background: none; border: none; color: var(--p2); font-size: 15px; cursor: pointer; font-weight: 700; }
-
-#comecar {
-  width: 100%; font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 800;
-  padding: 17px; margin-top: 4px; border: 3px solid var(--grafite); border-radius: 16px;
+.campo:focus { outline: 3px solid var(--p3); border-color: var(--grafite); }
+textarea.campo { resize: vertical; min-height: 90px; }
+.btn-grande {
+  width: 100%; font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 800;
+  padding: 16px; margin-top: 18px; border: 3px solid var(--grafite); border-radius: 16px;
   background: linear-gradient(90deg, var(--p3), var(--p2)); color: var(--branco);
   cursor: pointer; box-shadow: 5px 5px 0 var(--grafite); transition: transform .1s, box-shadow .1s;
   text-shadow: 0 1px 2px rgba(0,0,0,.25);
 }
-#comecar:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--grafite); }
-#comecar:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--grafite); }
-#abrir-salvo {
-  margin-top: 12px; background: none; border: none; color: var(--p1);
-  font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: underline;
+.btn-grande:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--grafite); }
+.btn-grande:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--grafite); }
+.btn-grande:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.link-btn {
+  background: none; border: none; color: var(--p1); font-size: 15px; font-weight: 600;
+  cursor: pointer; text-decoration: underline; margin-top: 14px; padding: 4px 8px;
 }
+.btn {
+  font-size: 14px; font-weight: 700; padding: 9px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--branco); border: 2px solid var(--grafite); color: var(--grafite);
+}
+.btn.destaque { background: var(--p4); color: #fff; border-color: var(--p4); }
+.btn.cor { background: var(--p1); color: #fff; border-color: var(--p1); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.creditos { font-size: 13px; color: #8a8ea0; margin-top: 16px; }
+.nota { font-size: 14px; color: var(--suave); text-align: left; margin-top: 12px; line-height: 1.5; }
+.caixa-tarefa {
+  text-align: left; background: var(--tint1); border: 2px solid var(--p1);
+  border-radius: 14px; padding: 14px 16px; margin-top: 6px;
+}
+.caixa-tarefa h2 { font-size: 20px; line-height: 1.3; margin-bottom: 6px; }
+.caixa-tarefa p { font-size: 17px; white-space: pre-wrap; }
+.estado { padding: 18px; border-radius: 14px; font-size: 16px; text-align: left; margin-top: 12px; }
+.estado.erro { background: #fff6f6; border: 2px solid #e8a0a0; color: #8a2a20; }
+.estado.carregando { background: var(--cinza); border: 2px dashed var(--borda); color: var(--suave); }
+.estado.vazio { background: var(--cinza); border: 2px dashed var(--borda); color: var(--suave); }
 
 /* ============ EXPEDIÇÃO ============ */
-#app { display: none; min-height: 100vh; flex-direction: column; max-width: 760px; margin: 0 auto; padding: 0 14px; }
+#app { min-height: 100vh; display: flex; flex-direction: column; max-width: 760px; margin: 0 auto; padding: 0 14px; }
 #topo {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 12px 0 10px; border-bottom: 3px solid var(--grafite);
   position: sticky; top: 0; background: var(--branco); z-index: 5; flex-wrap: wrap;
 }
 #topo .logo { font-size: 24px; font-weight: 800; }
-#humor-topo { font-size: 22px; }
 #topo .acoes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-#topo .acoes .bolinha { width: 28px; height: 28px; border-width: 2px; }
-#topo button.btn {
-  font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer;
-  background: var(--branco); border: 2px solid var(--grafite); color: var(--grafite);
+#relogio {
+  font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700; padding: 6px 12px;
+  border-radius: 999px; background: var(--tint1); color: var(--p1); white-space: nowrap;
 }
-#topo button.btn.destaque { background: var(--p4); color: #fff; border-color: var(--p4); }
-
-#painel-prof {
-  display: flex; align-items: center; gap: 10px; padding: 10px 0 4px;
-}
-#barra-prof { flex: 1; height: 10px; border-radius: 999px; background: var(--cinza); overflow: hidden; }
-#barra-prof > div {
+#relogio.esgotado { background: var(--tint3); color: #b07708; }
+#faixa-tarefa { padding: 10px 0 2px; font-size: 15px; color: #4a4e5c; }
+#faixa-tarefa b { color: var(--grafite); }
+#barra-tempo { height: 8px; border-radius: 999px; background: var(--cinza); overflow: hidden; margin-top: 8px; }
+#barra-tempo > div {
   height: 100%; width: 0%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--p4), var(--p1), var(--p2));
-  transition: width .6s ease;
+  background: linear-gradient(90deg, var(--p4), var(--p1), var(--p2)); transition: width 1s linear;
 }
-#prof-rotulo { font-size: 13px; font-weight: 700; color: var(--p1); white-space: nowrap; }
+#ajustes {
+  position: absolute; right: 0; top: 58px; z-index: 6; width: min(340px, 92vw); text-align: left;
+  background: var(--branco); border: 3px solid var(--grafite); border-radius: 16px;
+  box-shadow: 6px 6px 0 var(--p1); padding: 16px;
+}
+#ajustes .rotulo { margin-top: 10px; }
+#ajustes .rotulo:first-child { margin-top: 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-size: 14px; font-weight: 600; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  border: 2px solid var(--borda); background: var(--branco); color: var(--grafite);
+}
+.chip.ativa { border-color: var(--p1); background: var(--tint1); }
+.bolinhas { display: flex; gap: 10px; }
+.bolinha { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 3px solid var(--borda); }
+.bolinha.ativa { border-color: var(--grafite); }
+.b-vitamina { background: linear-gradient(135deg, #7c3aed, #ec4899, #f59e0b); }
+.b-pantanal { background: linear-gradient(135deg, #0e9f6e, #0ea5e9, #d97706); }
+.b-tropical { background: linear-gradient(135deg, #f43f5e, #fb923c, #8b5cf6); }
+.b-oceano  { background: linear-gradient(135deg, #2563eb, #06b6d4, #14b8a6); }
 
-/* trilha */
 #trilha { flex: 1; padding: 16px 0 12px 0; position: relative; }
 #trilha::before {
   content: ""; position: absolute; left: 21px; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, var(--p4), var(--p1), var(--p2));
-  border-radius: 4px; opacity: .35;
+  background: linear-gradient(180deg, var(--p4), var(--p1), var(--p2)); border-radius: 4px; opacity: .35;
 }
-.no { position: relative; padding-left: 56px; margin-bottom: 22px; }
+.no { position: relative; padding-left: 56px; margin-bottom: 20px; }
 .no .marcador {
-  position: absolute; left: 4px; top: 2px; width: 38px; height: 38px;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 19px; border: 3px solid var(--branco); z-index: 1;
-  box-shadow: 0 0 0 3px var(--borda);
+  position: absolute; left: 4px; top: 2px; width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 19px;
+  border: 3px solid var(--branco); z-index: 1; box-shadow: 0 0 0 3px var(--borda); background: var(--branco);
 }
-.no.aluno .marcador { background: var(--tint3); box-shadow: 0 0 0 3px var(--p3); }
+.no.aluno .marcador, .no.travei .marcador { background: var(--tint3); box-shadow: 0 0 0 3px var(--p3); }
 .no.tutor .marcador { background: var(--tint1); box-shadow: 0 0 0 3px var(--p1); }
-.no.resumo .marcador { background: var(--tint4); box-shadow: 0 0 0 3px var(--p4); }
+.no.resumo .marcador, .no.fecho .marcador { background: var(--tint4); box-shadow: 0 0 0 3px var(--p4); }
 .no.aviso .marcador { background: #fff2f2; box-shadow: 0 0 0 3px #e8a0a0; }
 .no .quem {
   font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 3px;
 }
-.no.aluno .quem { color: #b07708; }
+.no.aluno .quem, .no.travei .quem { color: #b07708; }
 .no.tutor .quem { color: var(--p1); }
-.no.resumo .quem { color: #0d8a6a; }
+.no.resumo .quem, .no.fecho .quem { color: #0d8a6a; }
 .no.aviso .quem { color: #c0392b; }
 .no .corpo {
   background: var(--branco); border: 2px solid var(--borda); border-radius: 14px;
-  padding: 12px 16px; white-space: pre-wrap;
+  padding: 12px 16px; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .no.aluno .corpo { background: var(--tint3); border-color: var(--p3); }
+.no.travei .corpo { background: var(--branco); border: 2px dashed var(--p3); font-weight: 600; font-size: 16px; }
 .no.tutor .corpo { background: var(--tint1); border-color: var(--p1); }
-.no.resumo .corpo { background: var(--tint4); border-color: var(--p4); }
+.no.resumo .corpo, .no.fecho .corpo { background: var(--tint4); border-color: var(--p4); }
 .no.aviso .corpo { background: #fff6f6; border-color: #e8a0a0; font-size: 16px; }
 .no.pensando .corpo { color: #8a8ea0; font-style: italic; border-style: dashed; }
 .ponto { display: inline-block; animation: pisca 1.2s infinite; }
 .ponto:nth-child(2){ animation-delay:.2s } .ponto:nth-child(3){ animation-delay:.4s }
 @keyframes pisca { 0%,100%{opacity:.15} 50%{opacity:1} }
+@media (prefers-reduced-motion: reduce) { .ponto { animation: none; } }
+.pilula {
+  display: inline-block; background: var(--tint4); color: var(--grafite); border: 1.5px solid var(--p4);
+  border-radius: 999px; padding: 2px 12px; margin: 2px; font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.antes-depois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; white-space: normal; }
+.antes-depois > div { border-radius: 12px; padding: 12px 14px; background: var(--branco); border: 2px solid var(--borda); }
+.antes-depois .ad-depois { border-color: var(--p4); }
+.antes-depois h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; color: var(--suave); }
+.antes-depois .ad-depois h3 { color: #0d8a6a; }
+.antes-depois p { white-space: pre-wrap; font-size: 16.5px; }
+.fecho-msg { margin-top: 12px; white-space: pre-wrap; }
 
-#rodape { position: sticky; bottom: 0; background: var(--branco); padding: 8px 0 16px; border-top: 2px solid var(--borda); }
-#linha-envio { display: flex; gap: 10px; align-items: flex-end; }
+#rodape { position: sticky; bottom: 0; background: var(--branco); padding: 8px 0 14px; border-top: 2px solid var(--borda); }
+#linha-envio { display: flex; gap: 8px; align-items: flex-end; }
 #texto {
-  flex: 1; font-family: inherit; font-size: 18px; padding: 13px;
-  border: 2px solid var(--grafite); border-radius: 14px;
+  flex: 1; font-size: 18px; padding: 13px; border: 2px solid var(--grafite); border-radius: 14px;
   resize: none; min-height: 56px; max-height: 170px; background: var(--branco);
 }
 #texto:focus { outline: 3px solid var(--p3); }
 #enviar {
-  font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 800;
-  padding: 14px 22px; border: 3px solid var(--grafite); border-radius: 14px;
+  font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 800; padding: 14px 20px;
+  border: 3px solid var(--grafite); border-radius: 14px;
   background: linear-gradient(135deg, var(--p1), var(--p2)); color: #fff; cursor: pointer;
   box-shadow: 3px 3px 0 var(--grafite);
 }
-#enviar:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; }
-@media (max-width: 620px) {
+#travei {
+  font-size: 14px; font-weight: 700; padding: 10px 12px; border-radius: 14px; cursor: pointer;
+  border: 2px dashed var(--p3); background: var(--tint3); color: #8a5a00; line-height: 1.2; min-height: 56px;
+}
+#enviar:disabled, #travei:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; }
+
+/* ============ PROFESSOR ============ */
+#tela-prof { max-width: 1120px; margin: 0 auto; padding: 24px 20px 60px; }
+.prof-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 14px; border-bottom: 3px solid var(--grafite); margin-bottom: 22px;
+}
+.prof-topo .logo { font-size: 26px; font-weight: 800; }
+.quem-sou { font-size: 14px; color: var(--suave); }
+.painel-card { border: 2px solid var(--borda); border-radius: 16px; padding: 22px; margin-bottom: 20px; background: var(--branco); }
+.painel-card h2 { font-size: 20px; margin-bottom: 4px; }
+.painel-card .sub { font-size: 15px; color: var(--suave); margin-bottom: 8px; }
+.grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.item-tarefa {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border: 2px solid var(--borda); border-radius: 12px; padding: 12px 16px; margin-top: 10px;
+}
+.item-tarefa b { font-size: 17px; }
+.item-tarefa small { display: block; color: var(--suave); font-size: 13.5px; }
+.compartilhar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+#qr { padding: 8px; border: 2px solid var(--borda); border-radius: 12px; background: #fff; min-width: 156px; min-height: 156px; }
+.link-caixa { flex: 1; min-width: 240px; }
+.link-caixa input { font-size: 15px; }
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+.numero { border-radius: 14px; padding: 14px 16px; background: var(--tint1); }
+.numero:nth-child(2) { background: var(--tint4); } .numero:nth-child(3) { background: var(--tint3); } .numero:nth-child(4) { background: var(--tint2); }
+.numero b { display: block; font-family: 'Sora', sans-serif; font-size: 30px; line-height: 1.1; }
+.numero span { font-size: 13.5px; color: #4a4e5c; }
+.tabela-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { text-align: left; font-size: 12.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--suave); padding: 8px 10px; border-bottom: 2px solid var(--grafite); }
+td { padding: 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.selo { display: inline-block; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.selo.ok { background: var(--tint4); color: #0d8a6a; } .selo.andamento { background: var(--tint3); color: #8a5a00; }
+td .ad-mini { font-size: 14px; color: #4a4e5c; white-space: pre-wrap; max-width: 320px; }
+.grupo-erro { margin-top: 14px; }
+.grupo-erro .linha { display: flex; align-items: center; gap: 10px; }
+.grupo-erro .linha b { flex: 0 0 auto; font-family: 'Sora', sans-serif; min-width: 26px; }
+.grupo-erro .barra { flex: 1; height: 12px; background: var(--cinza); border-radius: 999px; overflow: hidden; }
+.grupo-erro .barra > div { height: 100%; background: linear-gradient(90deg, var(--p3), var(--p2)); border-radius: 999px; }
+.grupo-erro .titulo-erro { font-weight: 700; margin-bottom: 4px; }
+.grupo-erro .quem-erro { font-size: 13.5px; color: var(--suave); margin-top: 3px; }
+.sem-nota { font-size: 14px; background: var(--tint4); border-radius: 12px; padding: 10px 14px; margin-top: 14px; color: #1f4d3d; }
+
+@media (max-width: 720px) {
   body { font-size: 17px; }
   .logo-grande { font-size: 40px; }
-  #cartao { padding: 26px 18px; }
-  .estrela { display: none; }
+  .cartao { padding: 26px 18px; }
+  .grade2, .antes-depois { grid-template-columns: 1fr; }
+  #travei { font-size: 13px; padding: 8px; }
 }
+
+/* ============ V3: aula, dúvidas, disciplina ============ */
+.escolhas { display: grid; gap: 12px; margin-top: 14px; }
+.escolha {
+  text-align: left; cursor: pointer; border: 3px solid var(--grafite); border-radius: 16px;
+  padding: 16px 18px; background: var(--branco); box-shadow: 5px 5px 0 var(--p1); transition: transform .1s, box-shadow .1s;
+}
+.escolha:nth-child(2) { box-shadow: 5px 5px 0 var(--p4); }
+.escolha:hover { transform: translate(-2px,-2px); }
+.escolha b { display: block; font-family: 'Sora', sans-serif; font-size: 19px; }
+.escolha span { font-size: 15px; color: var(--suave); }
+.problema-item { border: 2px solid var(--borda); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+.problema-item .cab { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: var(--p1); margin-bottom: 6px; }
+.problema-item .cab button { background: none; border: none; color: var(--p2); font-weight: 700; cursor: pointer; font-size: 13px; }
+.problema-item textarea { min-height: 80px; }
+.conversa { background: var(--cinza); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; white-space: pre-wrap; max-width: 900px; }
+.conversa b { color: var(--p1); }
+td .mini-btn { font-size: 13px; padding: 5px 10px; border-width: 1.5px; }
+.selo.nao { background: var(--cinza); color: var(--suave); }
 </style>
 </head>
 <body>
 
-<!-- ================= ABERTURA ================= -->
-<section id="abertura">
-  <div id="ceu"></div>
-  <div id="cartao">
+<!-- ================= INÍCIO (sem link de aula) ================= -->
+<section class="tela oculto" id="tela-inicio">
+  <div class="cartao">
     <div class="logo logo-grande">Faísc<span class="grad-txt">a</span><span class="raio">⚡</span></div>
     <p class="lema">Ninguém fica inteligente recebendo resposta pronta.<br>Aqui você <b>constrói</b> a sua, passo a passo.</p>
+    <label class="rotulo" for="codigo">Código da aula</label>
+    <input class="campo" id="codigo" type="text" placeholder="Ex.: K7M2QA" maxlength="12" autocapitalize="characters" autocomplete="off">
+    <button class="btn-grande" id="entrar-codigo">Entrar na aula ⚡</button>
+    <label class="rotulo" for="tema-livre" style="margin-top:26px">Ou explore um tema por conta própria</label>
+    <input class="campo" id="tema-livre" type="text" placeholder="Qual pergunta você quer entender hoje?" maxlength="300">
+    <button class="link-btn" id="comecar-livre">Começar sem aula</button>
+    <div><button class="link-btn" id="ir-prof">Sou professor</button></div>
+    <p class="creditos">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
+  </div>
+</section>
 
-    <div class="secao-config">
-      <div class="titulo">Seu nome</div>
-      <input id="nome" type="text" placeholder="Como o Faísca deve te chamar? (opcional)" autocomplete="name">
-    </div>
-
-    <div class="secao-config">
-      <div class="titulo">Como você chega hoje?</div>
-      <div class="humores" id="humores">
-        <button class="humor" data-humor="animado"><span class="emoji">😄</span><span class="rotulo-h">Animado</span></button>
-        <button class="humor ativa" data-humor="tranquilo"><span class="emoji">🙂</span><span class="rotulo-h">Tranquilo</span></button>
-        <button class="humor" data-humor="cansado"><span class="emoji">🥱</span><span class="rotulo-h">Cansado</span></button>
-        <button class="humor" data-humor="ansioso"><span class="emoji">😰</span><span class="rotulo-h">Ansioso</span></button>
-        <button class="humor" data-humor="sobrecarregado"><span class="emoji">🤯</span><span class="rotulo-h">Sobrecarregado</span></button>
-        <button class="humor" data-humor="desanimado"><span class="emoji">😞</span><span class="rotulo-h">Desanimado</span></button>
+<!-- ================= ENTRADA DO ALUNO NA AULA ================= -->
+<section class="tela oculto" id="tela-tarefa">
+  <div class="cartao">
+    <div class="logo logo-grande" style="font-size:36px">Faísc<span class="grad-txt">a</span><span class="raio">⚡</span></div>
+    <div id="tarefa-estado" class="estado carregando">Abrindo a aula...</div>
+    <div id="tarefa-conteudo" class="oculto">
+      <span class="rotulo" id="tarefa-de">Aula</span>
+      <div class="caixa-tarefa"><h2 id="tarefa-titulo"></h2><p id="tarefa-disciplina"></p></div>
+      <div id="bloco-nome">
+        <label class="rotulo" for="nome">Seu nome</label>
+        <input class="campo" id="nome" type="text" placeholder="Nome e sobrenome" autocomplete="name" maxlength="80">
+        <button class="btn-grande" id="comecar">Entrar ⚡</button>
       </div>
-    </div>
-
-    <div class="secao-config">
-      <div class="titulo">Estilo do tutor</div>
-      <div class="opcoes" id="perfis">
-        <button class="opcao ativa" data-perfil="guia">
-          <span class="op-nome">🧭 Guia</span>
-          <span class="op-desc">Paciente, quebra em passos pequenos.</span>
-        </button>
-        <button class="opcao" data-perfil="treinador">
-          <span class="op-nome">🏋️ Treinador</span>
-          <span class="op-desc">Ritmo rápido, desafios diretos.</span>
-        </button>
-        <button class="opcao" data-perfil="provocador">
-          <span class="op-nome">😈 Provocador</span>
-          <span class="op-desc">Testa suas certezas. Nível pós.</span>
-        </button>
+      <div id="bloco-hub" class="oculto">
+        <div class="escolhas">
+          <button class="escolha" id="ir-problema"><b>🧩 Situação-problema</b><span id="status-problema"></span></button>
+          <button class="escolha" id="ir-duvida"><b>💬 Tirar uma dúvida</b><span>Sobre um termo, um conceito ou a disciplina.</span></button>
+        </div>
       </div>
+      <p class="nota">O que seu professor vê: seu nome, as dúvidas que você perguntou e a conversa da situação-problema, com sua resposta do início e a do fim. Ele vê isso para saber como você chegou à conclusão. O Faísca não dá nota.</p>
     </div>
+    <p class="creditos">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
+  </div>
+</section>
 
-    <div class="secao-config">
-      <div class="titulo">Cores</div>
+<!-- ================= CONVERSA ================= -->
+<main id="app" class="oculto">
+  <div id="topo">
+    <span class="logo">Faísc<span class="grad-txt">a</span>⚡</span>
+    <div class="acoes">
+      <button class="btn" id="voltar-aula">← Aula</button>
+      <span id="relogio">10:00</span>
+      <button class="btn" id="abrir-ajustes" aria-label="Ajustes" title="Ajustes">⚙</button>
+      <button class="btn" id="baixar" aria-label="Baixar conversa" title="Baixar conversa">💾</button>
+      <button class="btn destaque" id="fechar">Fechar ✦</button>
+    </div>
+    <div id="ajustes" class="oculto">
+      <span class="rotulo">Jeito do tutor</span>
+      <div class="chips" id="perfis">
+        <button class="chip ativa" data-perfil="guia">🧭 Guia</button>
+        <button class="chip" data-perfil="treinador">🏋️ Treinador</button>
+        <button class="chip" data-perfil="provocador">😈 Provocador</button>
+      </div>
+      <span class="rotulo">Cores</span>
       <div class="bolinhas">
         <button class="bolinha b-vitamina ativa" data-tema="vitamina" aria-label="Tema Vitamina"></button>
         <button class="bolinha b-pantanal" data-tema="pantanal" aria-label="Tema Pantanal"></button>
         <button class="bolinha b-tropical" data-tema="tropical" aria-label="Tema Tropical"></button>
         <button class="bolinha b-oceano" data-tema="oceano" aria-label="Tema Oceano"></button>
       </div>
-    </div>
-
-    <div class="secao-config">
-      <div class="titulo">Material da tarefa</div>
-      <div id="zona-upload" tabindex="0" role="button">
-        📎 Enviar PDF da disciplina
-        <div class="aviso-peso">Com o material, o Faísca aponta páginas reais. Até 3 arquivos, abaixo de 10 MB.</div>
+      <span class="rotulo">Como você está hoje? (opcional, não é enviado ao professor)</span>
+      <div class="chips" id="humores">
+        <button class="chip" data-humor="animado">😄 Animado</button>
+        <button class="chip" data-humor="cansado">🥱 Cansado</button>
+        <button class="chip" data-humor="ansioso">😰 Ansioso</button>
+        <button class="chip" data-humor="sobrecarregado">🤯 Sobrecarregado</button>
+        <button class="chip" data-humor="desanimado">😞 Desanimado</button>
       </div>
-      <input id="input-arquivo" type="file" accept="application/pdf" multiple hidden>
-      <div id="lista-arquivos"></div>
-    </div>
-
-    <button id="comecar">Iniciar expedição ⚡</button>
-    <button id="abrir-salvo">Continuar uma expedição salva</button>
-    <input id="input-json" type="file" accept="application/json" hidden>
-    <p style="font-size:13px;color:#8a8ea0;margin-top:14px">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
-  </div>
-</section>
-
-<!-- ================= EXPEDIÇÃO ================= -->
-<main id="app">
-  <div id="topo">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span class="logo">Faísc<span class="grad-txt">a</span>⚡</span>
-      <span id="humor-topo"></span>
-    </div>
-    <div class="acoes">
-      <button class="bolinha b-vitamina" data-tema="vitamina" aria-label="Tema Vitamina"></button>
-      <button class="bolinha b-pantanal" data-tema="pantanal" aria-label="Tema Pantanal"></button>
-      <button class="bolinha b-tropical" data-tema="tropical" aria-label="Tema Tropical"></button>
-      <button class="bolinha b-oceano" data-tema="oceano" aria-label="Tema Oceano"></button>
-      <button class="btn" onclick="salvarArquivo()">💾</button>
-      <button class="btn destaque" onclick="fecharSessao()">Mapa da expedição ✦</button>
     </div>
   </div>
-
-  <div id="painel-prof">
-    <span id="prof-rotulo">Profundidade: 0</span>
-    <div id="barra-prof"><div></div></div>
-  </div>
-
+  <div id="faixa-tarefa"><b id="faixa-titulo"></b><div id="barra-tempo"><div></div></div></div>
   <div id="trilha"></div>
-
   <div id="rodape">
     <div id="linha-envio">
-      <textarea id="texto" placeholder="Seu próximo passo: dúvida, tentativa, ou onde travou..." rows="2"></textarea>
-      <button id="enviar" onclick="enviar()">⚡</button>
+      <button id="travei" title="Peça uma pista. São três níveis.">🧗 Travei</button>
+      <textarea id="texto" placeholder="Escreva do seu jeito..." rows="2"></textarea>
+      <button id="enviar" aria-label="Enviar">⚡</button>
     </div>
-    <p style="font-size:11.5px;color:#a0a4b2;text-align:center;margin-top:6px">Feito por Ernandes Sobreira e Wilkinson Lázaro para fins educacionais</p>
   </div>
 </main>
 
+<!-- ================= PROFESSOR ================= -->
+<section id="tela-prof" class="oculto">
+  <div class="prof-topo">
+    <span class="logo">Faísc<span class="grad-txt">a</span>⚡ <span style="font-size:15px;font-weight:600;color:var(--suave)">área do professor</span></span>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="quem-sou" id="prof-quem"></span>
+      <button class="btn oculto" id="prof-voltar">← Voltar</button>
+      <button class="btn oculto" id="prof-sair">Sair</button>
+    </div>
+  </div>
+  <div id="prof-estado" class="estado carregando">Carregando...</div>
+
+  <div id="prof-login" class="oculto painel-card" style="max-width:520px;margin:40px auto;text-align:center">
+    <h2>Entre para criar suas disciplinas</h2>
+    <p class="sub">Você cadastra a disciplina e as aulas. O aluno entra pelo código da aula, tira dúvidas e resolve a situação-problema com mediação.</p>
+    <button class="btn-grande" id="prof-entrar">Entrar com Google</button>
+  </div>
+
+  <!-- minhas disciplinas -->
+  <div id="prof-casa" class="oculto">
+    <div class="painel-card">
+      <h2>Nova disciplina</h2>
+      <p class="sub">O plano de ensino dá ao Faísca o contexto da disciplina: ementa, conteúdos, avaliação e bibliografia.</p>
+      <div class="grade2">
+        <div><label class="rotulo" for="nd-nome">Nome da disciplina</label>
+          <input class="campo" id="nd-nome" maxlength="120" placeholder="Ex.: Limnologia"></div>
+        <div><label class="rotulo" for="nd-publico">Turma ou nível</label>
+          <input class="campo" id="nd-publico" maxlength="120" placeholder="Ex.: 4º semestre de Biologia, 2027/1"></div>
+      </div>
+      <label class="rotulo" for="nd-plano">Plano de ensino em PDF (opcional, pode ser enviado depois)</label>
+      <input class="campo" id="nd-plano" type="file" accept="application/pdf">
+      <div id="nd-erro" class="estado erro oculto"></div>
+      <button class="btn-grande" id="nd-criar" style="max-width:320px">Criar disciplina</button>
+    </div>
+    <div class="painel-card"><h2>Minhas disciplinas</h2><div id="lista-disciplinas"></div></div>
+  </div>
+
+  <!-- uma disciplina: aulas -->
+  <div id="prof-disc" class="oculto">
+    <div class="painel-card">
+      <h2 id="dc-nome"></h2>
+      <p class="sub" id="dc-info"></p>
+      <label class="rotulo" for="dc-plano">Enviar ou trocar o plano de ensino (PDF)</label>
+      <input class="campo" id="dc-plano" type="file" accept="application/pdf" style="max-width:520px">
+      <span class="quem-sou" id="dc-plano-estado" style="margin-left:10px"></span>
+    </div>
+    <div class="painel-card">
+      <h2>Aulas</h2>
+      <div id="dc-aulas-estado" class="estado carregando">Carregando as aulas...</div>
+      <div class="tabela-wrap"><table id="dc-tabela" class="oculto">
+        <thead><tr><th>Aula</th><th>Código</th><th>Entraram</th><th>Concluíram o problema</th><th>Dúvidas</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+    <div class="painel-card">
+      <h2>Nova aula</h2>
+      <p class="sub">Cada aula tem o seu código. Cadastre uma ou mais situações-problema: cada aluno recebe uma delas por sorteio.</p>
+      <div class="grade2">
+        <div><label class="rotulo" for="na-titulo">Título da aula</label>
+          <input class="campo" id="na-titulo" maxlength="120" placeholder="Ex.: Aula 3 · Eutrofização"></div>
+        <div><label class="rotulo" for="na-minutos">Tempo da situação-problema (minutos)</label>
+          <input class="campo" id="na-minutos" type="number" min="5" max="60" value="10"></div>
+      </div>
+      <label class="rotulo" for="na-pdf">Material da aula em PDF (opcional)</label>
+      <input class="campo" id="na-pdf" type="file" accept="application/pdf">
+      <p class="nota">Envie só o texto da aula. A leitura é feita neste navegador, com as páginas marcadas, e o tutor cita as páginas reais. PDF escaneado sem texto não funciona.</p>
+      <span class="rotulo">Situações-problema</span>
+      <div id="na-problemas"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn" id="na-mais">+ Adicionar situação-problema</button>
+        <button class="btn" id="na-variar">Sugerir 3 variações com IA</button>
+        <span class="quem-sou" id="na-variar-estado" style="align-self:center"></span>
+      </div>
+      <p class="nota">As variações são rascunhos gerados a partir da primeira situação. Revise e edite cada uma antes de criar a aula. Sem situação-problema, a aula fica só com as dúvidas.</p>
+      <div id="na-erro" class="estado erro oculto"></div>
+      <button class="btn-grande" id="na-criar" style="max-width:320px">Criar aula</button>
+    </div>
+  </div>
+
+  <!-- painel de uma aula -->
+  <div id="prof-painel" class="oculto">
+    <div class="painel-card">
+      <h2 id="pn-titulo"></h2>
+      <p class="sub" id="pn-enunciado"></p>
+      <div class="compartilhar">
+        <div id="qr"></div>
+        <div class="link-caixa">
+          <span class="rotulo" style="margin-top:0">Link da aula para o aluno</span>
+          <input class="campo" id="pn-link" readonly>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn cor" id="pn-copiar">Copiar link</button>
+            <span style="font-size:15px;align-self:center">Código: <b id="pn-codigo"></b></span>
+          </div>
+          <p class="nota" id="pn-material"></p>
+        </div>
+      </div>
+    </div>
+    <div class="painel-card">
+      <h2>Quem fez e como chegou</h2>
+      <div class="numeros" id="pn-numeros"></div>
+      <div id="pn-sessoes-estado" class="estado carregando">Carregando a turma...</div>
+      <div class="tabela-wrap"><table id="pn-tabela" class="oculto">
+        <thead><tr><th>Aluno</th><th>Problema</th><th>Situação</th><th>Pistas</th><th>Antes</th><th>Depois</th><th>Como chegou</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div style="margin-top:14px"><button class="btn" id="pn-csv">Baixar planilha (CSV)</button></div>
+      <p class="sem-nota">Sem nota. O Faísca não corrige, não avalia e não sugere nota. O resumo de como o aluno chegou é escrito por IA a partir da conversa, e a conversa completa fica ao lado para você conferir.</p>
+    </div>
+    <div class="painel-card">
+      <h2>Dúvidas da turma</h2>
+      <p class="sub">Tudo o que os alunos perguntaram ao Faísca nesta aula. O agrupamento é feito por IA e lista as perguntas originais para conferência.</p>
+      <button class="btn cor" id="pn-agrupar-duvidas">Agrupar dúvidas</button>
+      <span class="quem-sou" id="pn-duvidas-status" style="margin-left:10px"></span>
+      <div id="pn-duvidas"></div>
+    </div>
+    <div class="painel-card">
+      <h2>Erros conceituais que se repetiram</h2>
+      <p class="sub">Registrados ao fim de cada situação-problema concluída. O agrupamento é feito por IA e deve ser conferido por você.</p>
+      <button class="btn cor" id="pn-agrupar">Agrupar erros da turma</button>
+      <span class="quem-sou" id="pn-agrupado-em" style="margin-left:10px"></span>
+      <div id="pn-erros"></div>
+    </div>
+  </div>
+</section>
+
 <script>
 /* ================= CONFIGURAÇÃO ================= */
+// Configuração pública do projeto Firebase "faisca" (faisca-56bd5). A proteção dos dados está nas regras do Firestore.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCyLFGZJXdbqWmilNMKC9ZSGOVNq0tpJzE",
+  authDomain: "faisca-56bd5.firebaseapp.com",
+  projectId: "faisca-56bd5",
+  storageBucket: "faisca-56bd5.firebasestorage.app",
+  messagingSenderId: "262981249938",
+  appId: "1:262981249938:web:3efafd58aa6007822fef4b"
+};
 const WORKER_URL = "https://faisca-api.ernandes-sobreira.workers.dev";
+const LIMITE_MATERIAL = 200000;   // caracteres do material da aula
+const LIMITE_PLANO = 120000;      // caracteres do plano de ensino
+const MINUTOS_PADRAO = 10;
 
-/* ================= FUNDO DA ABERTURA (discreto, contido) ================= */
-(function criarEstrelas(){
-  const ceu = document.getElementById('ceu');
-  const pos = [[6,10],[90,8],[8,86],[92,88],[4,48],[94,50]];
-  pos.forEach((p, i) => {
-    const e = document.createElement('div');
-    e.className = 'estrela';
-    e.textContent = '✦';
-    e.style.left = p[0] + '%';
-    e.style.top = p[1] + '%';
-    e.style.color = `var(--p${(i % 4) + 1})`;
-    e.style.animationDelay = (i * .7) + 's';
-    ceu.appendChild(e);
-  });
-})();
-
-/* ================= TEMAS ================= */
-document.querySelectorAll('button[data-tema]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.documentElement.setAttribute('data-tema', btn.dataset.tema);
-    document.querySelectorAll('button[data-tema]').forEach(b =>
-      b.classList.toggle('ativa', b.dataset.tema === btn.dataset.tema));
-  });
-});
-
-/* ================= HUMOR DO DIA ================= */
-let humor = 'tranquilo';
-const EMOJI_HUMOR = { animado:'😄', tranquilo:'🙂', cansado:'🥱', ansioso:'😰', sobrecarregado:'🤯', desanimado:'😞' };
-document.querySelectorAll('.humor').forEach(btn => {
-  btn.addEventListener('click', () => {
-    humor = btn.dataset.humor;
-    document.querySelectorAll('.humor').forEach(b => b.classList.toggle('ativa', b === btn));
-  });
-});
-const INSTRUCAO_HUMOR = {
-  animado: 'O aluno chegou animado. Aproveite a energia: pode acelerar um pouco o ritmo.',
-  tranquilo: 'O aluno chegou tranquilo. Ritmo normal.',
-  cansado: 'O aluno chegou cansado. Passos curtos, uma coisa de cada vez, sem sobrecarregar.',
-  ansioso: 'O aluno chegou ansioso. Na PRIMEIRA resposta, acolha em UMA frase curta e calorosa (sem dramatizar) e ofereça quebrar a tarefa em passos bem pequenos. Depois disso, siga normal: previsibilidade e progresso pequeno acalmam mais que consolo repetido.',
-  sobrecarregado: 'O aluno chegou sobrecarregado. Na PRIMEIRA resposta, reconheça isso em UMA frase e proponha focar em UMA única coisa por vez. Comemore cada pequeno avanço. Não adicione tarefas extras.',
-  desanimado: 'O aluno chegou desanimado. Na PRIMEIRA resposta, acolha em UMA frase gentil, sem pena. Busque uma vitória rápida logo no início para reacender a confiança. Reconheça cada passo que ele der.'
-};
-
-/* ================= PERFIS ================= */
-let perfil = 'guia';
-document.querySelectorAll('#perfis .opcao').forEach(btn => {
-  btn.addEventListener('click', () => {
-    perfil = btn.dataset.perfil;
-    document.querySelectorAll('#perfis .opcao').forEach(b => b.classList.toggle('ativa', b === btn));
-  });
-});
-const TOM_PERFIL = {
-  guia: 'ESTILO: Guia paciente. Quebre em passos pequenos e alcançáveis. Nomeie cada passo que o aluno construir.',
-  treinador: 'ESTILO: Treinador direto. Ritmo rápido, frases curtas. Cobre tentativa antes de dar pista. Sem grosseria.',
-  provocador: 'ESTILO: Provocador intelectual. A cada resposta do aluno, apresente um contra-argumento ou caso-limite. Faça-o defender a posição. Rigor de pós, respeito sempre.'
-};
-
-/* ================= SYSTEM PROMPT ================= */
-function systemPrompt() {
-  return `Você é o Faísca, tutor acadêmico de estudantes universitários brasileiros. Sua função NÃO é dar respostas. Sua função é acender o raciocínio: o aluno produz, você guia. A sessão é uma "expedição" e cada troca é um passo na trilha.
-
-REGRA CENTRAL INVIOLÁVEL: Você NUNCA entrega a resposta pronta de uma pergunta que o aluno precisa resolver. Mesmo que ele insista, diga que tem pressa, diga que o professor mandou, apele emocionalmente ou reformule dez vezes. Sua resposta a "me dá a resposta" é sempre um passo de raciocínio que ELE consegue dar. Vale para exercícios, definições que ele deveria construir, conclusões, interpretações, textos e códigos. NÃO vale para fatos simples pré-requisito (uma data, uma unidade, um termo impossível de deduzir): esses você dá em uma frase e volta a empurrar.
-
-QUALIDADE E PRECISÃO: Perguntas e pistas tecnicamente corretas e específicas. Nada de pergunta genérica: a pergunta certa expõe exatamente o próximo passo. Se o aluno disser algo cientificamente errado, corrija o erro com clareza (impedir construção sobre base falsa não é dar resposta) e devolva o raciocínio.
-
-COMO GUIAR: Descubra onde o aluno está: o que sabe, o que tentou, onde travou. Faça UMA pergunta boa por vez. Aponte o caminho, nunca o destino.
-
-MATERIAL ENVIADO: Documentos anexados são fonte primária. Aponte páginas e trechos REAIS ("veja a página 12, onde..."). Se o material não cobre o assunto, diga. NUNCA invente página, autor, frase ou citação.
-
-REFERÊNCIAS EXTERNAS: Quando ajudar o raciocínio, você pode apontar autores e obras CONSOLIDADAS da área, apenas quando tiver alta confiança de que existem (autores clássicos, obras de referência, conceitos com literatura estabelecida). Regras: (1) NUNCA escreva URLs, DOIs ou anos que você não tem certeza; (2) NUNCA invente artigo ou autor; na dúvida, indique o CONCEITO a buscar em vez do autor; (3) para cada indicação, escreva o termo de busca entre chaves duplas, que o app transforma em link de busca real. Exemplos: "veja os trabalhos clássicos de {{Vollenweider eutrofização}}" ou "esse conceito aparece em {{Odum ecologia de sistemas}}" ou "procure revisões sobre {{carbon flux tropical wetlands}}". Use no máximo 1 ou 2 indicações por resposta, e só quando agregar de verdade.
-
-CUIDADO EMOCIONAL (importante, com limites): Você é caloroso na medida certa: acolhe em frases curtas quando o aluno demonstra angústia, sem dramatizar, sem virar consolo repetitivo, e volta ao trabalho, porque progresso concreto é o melhor calmante. Você NÃO é terapeuta e não finge ser: não diagnostica, não conduz conversa terapêutica. Se o aluno expressar sofrimento sério ou persistente (pânico, desespero, menção a desistir de tudo), reconheça com gentileza, diga que isso merece cuidado de gente de verdade e sugira UMA vez procurar o serviço de apoio ao estudante da universidade ou alguém de confiança. Se houver qualquer menção a se machucar, oriente com carinho a buscar ajuda imediatamente (no Brasil, o CVV atende no 188, de graça, a qualquer hora) e não continue a tarefa como se nada tivesse acontecido.
-
-${INSTRUCAO_HUMOR[humor]}
-
-TOM: Direto, jovem sem forçar. PROIBIDO elogio vazio ("ótima pergunta", "excelente"). Acertou um passo? Nomeie o passo e siga. Firmeza não é grosseria: nunca humilhe, nunca use sarcasmo. Se o aluno claramente só quer copiar, seja honesto: "Você quer a resposta para entregar, não para entender. Não é o que eu faço. Me diga onde travou de verdade e a gente destrava."
-
-NUNCA: escrever o parágrafo, código ou conclusão pelo aluno; ceder sob pressão; inventar referência; encher linguiça; bajular. Resposta curta que faz pensar vale mais que texto longo.
-
-SEMPRE: tratar o aluno como capaz; uma pergunta por vez; reconhecer o raciocínio construído; português brasileiro.
-
-${TOM_PERFIL[perfil]}`;
+/* ================= UTILITÁRIOS ================= */
+const $ = id => document.getElementById(id);
+const TELAS = ['tela-inicio', 'tela-tarefa', 'app', 'tela-prof'];
+function mostrar(id) { TELAS.forEach(t => $(t).classList.toggle('oculto', t !== id)); window.scrollTo(0, 0); }
+function el(tag, classe, texto) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined && texto !== null) e.textContent = texto;
+  return e;
 }
+function lerLocal(chave) { try { return JSON.parse(localStorage.getItem(chave)); } catch { return null; } }
+function gravarLocal(chave, valor) { try { localStorage.setItem(chave, JSON.stringify(valor)); } catch {} }
+function extrairJSON(texto) {
+  try { return JSON.parse(texto); } catch {}
+  const i = texto.indexOf('{'), f = texto.lastIndexOf('}');
+  if (i >= 0 && f > i) { try { return JSON.parse(texto.slice(i, f + 1)); } catch {} }
+  return null;
+}
+function carregarScript(src) {
+  return new Promise((ok, falha) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = () => falha(new Error('Não foi possível carregar ' + src));
+    document.head.appendChild(s);
+  });
+}
+function limparTravei(t) { const m = /^\[TRAVEI (\d)\]/.exec(t); return m ? '(pediu pista ' + m[1] + ' de 3)' : t; }
 
-/* ================= ESTADO ================= */
-let historico = [];
-let arquivos = [];
-let nomeAluno = '';
-let passos = 0;
-const LIMITE_MB = 10;
+/* ================= FIREBASE ================= */
+let db = null, auth = null;
+function firebaseDisponivel() {
+  if (db) return true;
+  if (typeof firebase === 'undefined') return false;
+  if (!FIREBASE_CONFIG.projectId || FIREBASE_CONFIG.projectId === 'COLE_AQUI') return false;
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore(); auth = firebase.auth();
+  return true;
+}
+const ERRO_FIREBASE = 'O banco de dados do Faísca ainda não está configurado neste endereço. Avise o professor responsável.';
+function usuarioAtual() {
+  return new Promise(ok => { const parar = auth.onAuthStateChanged(u => { parar(); ok(u); }); });
+}
+const agoraServidor = () => firebase.firestore.FieldValue.serverTimestamp();
 
-/* ================= UPLOAD PDF ================= */
-const zona = document.getElementById('zona-upload');
-const inputArq = document.getElementById('input-arquivo');
-zona.addEventListener('click', () => inputArq.click());
-zona.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputArq.click(); } });
-inputArq.addEventListener('change', async () => {
-  for (const f of inputArq.files) {
-    if (arquivos.length >= 3) { alert('Máximo de 3 arquivos.'); break; }
-    if (f.type !== 'application/pdf') { alert(f.name + ' não é PDF.'); continue; }
-    if (f.size > LIMITE_MB * 1024 * 1024) {
-      alert(f.name + ' passa de ' + LIMITE_MB + ' MB. Envie só o capítulo da tarefa.');
-      continue;
+/* ================= ESTADO DO ALUNO ================= */
+// modo: 'problema' (situação-problema da aula), 'duvida' (tirar dúvidas) ou 'livre' (sem aula)
+const S = {
+  modo: 'livre', aula: null, tarefa: null, nome: '', uid: null, problemaIdx: -1,
+  historico: [], duvidas: [], antes: null, depois: null, fechamento: null,
+  nivelPista: 0, pistas: 0, trocas: 0, inicio: 0,
+  concluida: false, avisouTempo: false, ocupado: false, perfil: 'guia', humor: null
+};
+let avisouFalhaPainel = false, relogioId = null;
+const naAula = () => S.modo !== 'livre';
+function chaveLocal(modo) { return 'faisca:' + (S.aula ? S.aula.codigo : 'livre') + ':' + (modo || S.modo); }
+function persistir() {
+  gravarLocal(chaveLocal(), {
+    historico: S.historico, duvidas: S.duvidas, antes: S.antes, depois: S.depois, fechamento: S.fechamento,
+    nivelPista: S.nivelPista, pistas: S.pistas, trocas: S.trocas, inicio: S.inicio,
+    concluida: S.concluida, avisouTempo: S.avisouTempo
+  });
+  gravarLocal('faisca:prefs', { perfil: S.perfil, tema: document.documentElement.getAttribute('data-tema') });
+}
+function refSessao() { return db.collection('aulas').doc(S.aula.codigo).collection('sessoes').doc(S.uid); }
+async function registrarNoPainel(dados, criar) {
+  if (!naAula()) return;
+  try {
+    dados.atualizadaEm = agoraServidor();
+    if (criar) await refSessao().set(dados, { merge: true }); else await refSessao().update(dados);
+  } catch (e) {
+    console.error(e);
+    if (!avisouFalhaPainel && !$('app').classList.contains('oculto')) {
+      avisouFalhaPainel = true;
+      addNo('aviso', 'Não consegui registrar seu progresso para o professor. Você pode continuar, mas confira sua internet.');
     }
-    const base64 = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result.split(',')[1]);
-      r.onerror = () => rej(new Error('Falha ao ler ' + f.name));
-      r.readAsDataURL(f);
-    });
-    arquivos.push({ nome: f.name, base64 });
   }
-  inputArq.value = '';
-  renderArquivos();
-});
-function renderArquivos() {
-  const el = document.getElementById('lista-arquivos');
-  el.innerHTML = '';
-  arquivos.forEach((a, i) => {
-    const div = document.createElement('div');
-    div.className = 'arquivo-item';
-    const nome = document.createElement('span');
-    nome.textContent = '📄 ' + a.nome;
-    const btn = document.createElement('button');
-    btn.textContent = 'remover';
-    btn.onclick = () => { arquivos.splice(i, 1); renderArquivos(); };
-    div.appendChild(nome); div.appendChild(btn);
-    el.appendChild(div);
-  });
 }
+const conversaParaPainel = () => S.historico.map(m => ({ de: m.role === 'user' ? 'aluno' : 'faisca', texto: limparTravei(m.content).slice(0, 2500) }));
 
-/* ================= INÍCIO ================= */
-const SAUDACAO_HUMOR = {
-  animado: 'Bora aproveitar essa energia!',
-  tranquilo: 'Bora nessa!',
-  cansado: 'Vamos com calma, um passo de cada vez.',
-  ansioso: 'Respira. A gente vai por partes, e cada parte é pequena.',
-  sobrecarregado: 'Uma coisa de cada vez. Só uma. O resto espera.',
-  desanimado: 'Começar já é o primeiro passo. Estou contigo.'
+/* ================= PROMPTS ================= */
+const TOM_PERFIL = {
+  guia: 'ESTILO: Guia paciente. Passos pequenos e alcançáveis. Nomeie cada passo que o aluno construir.',
+  treinador: 'ESTILO: Treinador direto. Ritmo rápido, frases curtas. Sem grosseria.',
+  provocador: 'ESTILO: Provocador intelectual. Traga um contra-argumento ou caso-limite e faça o aluno defender a posição. Respeito sempre.'
 };
-document.getElementById('comecar').addEventListener('click', () => {
-  nomeAluno = document.getElementById('nome').value.trim();
-  entrarNoApp();
-  addNo('assistant',
-    'Oi' + (nomeAluno ? ', ' + nomeAluno : '') + '! Eu sou o Faísca ⚡ Eu não dou resposta pronta: eu ando junto até VOCÊ chegar lá. ' +
-    SAUDACAO_HUMOR[humor] + ' ' +
-    (arquivos.length ? 'Já recebi seu material e vou usá-lo como mapa. ' : '') +
-    'Primeiro passo da expedição: qual é a tarefa, e o que você já tentou?');
-});
-function entrarNoApp() {
-  document.getElementById('abertura').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('humor-topo').textContent = EMOJI_HUMOR[humor];
-  document.getElementById('texto').focus();
-}
+const INSTRUCAO_HUMOR = {
+  animado: 'O aluno disse que está animado. Pode acelerar um pouco o ritmo.',
+  cansado: 'O aluno disse que está cansado. Passos curtos, uma coisa de cada vez.',
+  ansioso: 'O aluno disse que está ansioso. Acolha em UMA frase curta, sem dramatizar, e siga com passos pequenos e previsíveis.',
+  sobrecarregado: 'O aluno disse que está sobrecarregado. Reconheça em UMA frase e foque em UMA única coisa por vez.',
+  desanimado: 'O aluno disse que está desanimado. Acolha em UMA frase gentil, sem pena, e busque uma vitória rápida.'
+};
+function blocoComum() {
+  return `LINGUAGEM DO ALUNO: espelhe o jeito de falar do aluno. Se ele escreve simples, responda simples. Use os exemplos e as comparações que ele trouxe. Respostas curtas, no máximo 90 palavras.
 
-/* ================= TRILHA ================= */
-const MARCADOR = { aluno: '🧑', tutor: '⚡', resumo: '🗺️', aviso: '⚠️', pensando: '⚡' };
-// Transforma {{termo}} em link de busca no Google Scholar (link de busca nunca quebra)
-function renderCorpo(el, texto) {
-  const partes = String(texto).split(/\{\{([^{}]+)\}\}/g);
-  partes.forEach((parte, i) => {
-    if (i % 2 === 0) {
-      el.appendChild(document.createTextNode(parte));
-    } else {
-      const termo = parte.trim();
-      const a = document.createElement('a');
-      a.href = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(termo);
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = '🔎 ' + termo;
-      a.style.cssText = 'display:inline-block;background:var(--tint4);color:var(--grafite);border:1.5px solid var(--p4);border-radius:999px;padding:2px 12px;margin:2px 2px;font-size:15px;font-weight:600;text-decoration:none;';
-      el.appendChild(a);
-    }
-  });
+MATERIAL DE REFERÊNCIA: se houver um bloco de referência com PLANO DE ENSINO ou MATERIAL DA AULA, ele é a fonte primária. As páginas estão marcadas como [PÁGINA n]. Aponte páginas REAIS do material da aula ("olhe a página 4, no trecho sobre..."). Se a referência não cobre o ponto, diga isso. NUNCA invente página, autor, frase, data, critério de avaliação ou citação.
+
+REFERÊNCIAS EXTERNAS: só autores e obras consolidados que você tem alta confiança de que existem. Nunca escreva URL, DOI ou ano incerto. Para sugerir busca, escreva o termo entre chaves duplas, por exemplo {{eutrofização lagos rasos}}. No máximo uma indicação por resposta.
+
+CUIDADO EMOCIONAL: caloroso na medida certa, sem virar consolo repetitivo. Você não é terapeuta. Se o aluno expressar sofrimento sério, reconheça com gentileza e sugira UMA vez procurar o apoio ao estudante ou alguém de confiança. Se houver qualquer menção a se machucar, oriente com carinho a buscar ajuda imediatamente (no Brasil, o CVV atende no 188, de graça, a qualquer hora) e não siga a conversa como se nada tivesse acontecido.
+${S.humor ? INSTRUCAO_HUMOR[S.humor] : ''}
+
+TOM: direto, jovem sem forçar. PROIBIDO elogio vazio ("ótima pergunta", "excelente"). Nunca humilhe, nunca use sarcasmo. Você não dá nota, conceito nem avaliação do aluno.
+
+${TOM_PERFIL[S.perfil]}`;
 }
-function addNo(role, texto, classeExtra) {
-  const trilha = document.getElementById('trilha');
-  const tipo = classeExtra || (role === 'user' ? 'aluno' : 'tutor');
-  const div = document.createElement('div');
-  div.className = 'no ' + tipo;
-  const marc = document.createElement('div');
-  marc.className = 'marcador';
-  marc.textContent = MARCADOR[tipo] || '⚡';
-  const quem = document.createElement('div');
-  quem.className = 'quem';
-  quem.textContent = tipo === 'resumo' ? 'Mapa da expedição'
-                    : tipo === 'aviso' ? 'Aviso'
-                    : role === 'user' ? (nomeAluno || 'Você') : 'Faísca';
-  const corpo = document.createElement('div');
-  corpo.className = 'corpo';
-  renderCorpo(corpo, texto);
-  div.appendChild(marc); div.appendChild(quem); div.appendChild(corpo);
-  trilha.appendChild(div);
-  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  return div;
+function contextoAula() {
+  if (!S.aula) return '';
+  return `CONTEXTO
+Disciplina: ${S.aula.disciplina}
+${S.aula.publico ? 'Turma ou nível: ' + S.aula.publico : ''}
+Aula: ${S.aula.titulo}`;
 }
-function noPensando() {
-  const trilha = document.getElementById('trilha');
-  const div = document.createElement('div');
-  div.className = 'no tutor pensando';
-  div.innerHTML = '<div class="marcador">⚡</div><div class="quem">Faísca</div><div class="corpo">abrindo trilha <span class="ponto">·</span><span class="ponto">·</span><span class="ponto">·</span></div>';
-  trilha.appendChild(div);
-  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  return div;
+function promptProblema() {
+  const t = S.tarefa;
+  return `Você é o Faísca, tutor mediador de estudantes brasileiros. Nesta conversa o aluno resolve uma situação-problema. Sua função NÃO é dar a solução. Sua função é acender o raciocínio: o aluno produz, você guia.
+
+${contextoAula()}
+SITUAÇÃO-PROBLEMA DESTE ALUNO: ${t.enunciado}
+Duração: cerca de ${t.minutos} minutos. Foque no que a situação pede, sem abrir assuntos paralelos.
+
+REGRA CENTRAL INVIOLÁVEL: você NUNCA entrega a solução pronta da situação-problema nem de um passo que o aluno precisa construir. Mesmo que ele insista, diga que tem pressa ou diga que o professor deixou. Termos e fatos de pré-requisito (o significado de um termo, uma unidade, um dado impossível de deduzir) você explica em uma ou duas frases e devolve o raciocínio.
+
+CONHECIMENTO PRÉVIO (é daqui que tudo parte): a primeira mensagem do aluno é o que ele já sabe ou acha sobre a situação. Trate isso como matéria-prima valiosa. Na sua primeira resposta: (1) diga em uma frase o que do que ele trouxe está no caminho certo, citando as palavras dele; (2) escolha UM ponto do que ele disse, o mais fértil ou o mais frágil, e faça UMA pergunta sobre ele. Nunca recomece do zero ignorando o que ele trouxe. Se ele disser que não sabe nada, pergunte por uma situação do dia a dia ligada ao tema e parta dela. Uma pergunta por vez.
+
+PRECISÃO: perguntas e pistas tecnicamente corretas e específicas. Se o aluno afirmar algo cientificamente errado, não deixe passar: mostre um caso que contradiz a afirmação ou diga com clareza que aquilo não se sustenta, e devolva o raciocínio.
+
+BOTÃO TRAVEI (três níveis de pista): quando a mensagem começar com [TRAVEI 1], [TRAVEI 2] ou [TRAVEI 3], o aluno apertou o botão de pista. Nunca dê bronca nem peça que ele tente mais antes. Entregue a pista do nível pedido.
+[TRAVEI 1] pista leve: reformule sua última pergunta de um jeito mais simples e concreto, ou aponte onde olhar (uma página do material, uma palavra do enunciado).
+[TRAVEI 2] pista média: dê uma analogia ou um exemplo resolvido de um caso PARECIDO, diferente do da situação, e pergunte o que muda no caso dele.
+[TRAVEI 3] pista forte: entregue explicitamente o primeiro passo do raciocínio e deixe uma lacuna pequena e clara para ele completar. Ainda assim, a conclusão final é dele.
+
+${blocoComum()}`;
 }
-function atualizarProfundidade() {
-  passos++;
-  document.getElementById('prof-rotulo').textContent = 'Profundidade: ' + passos;
-  const pct = Math.min(100, passos * 8);
-  document.querySelector('#barra-prof > div').style.width = pct + '%';
+function promptDuvida() {
+  return `Você é o Faísca, tutor mediador de estudantes brasileiros. Nesta conversa o aluno veio TIRAR DÚVIDAS da disciplina e dos termos da aula. Você ajuda de verdade: responde o que é para responder e media o que é para o aluno construir.
+
+${contextoAula()}
+
+COMO RESPONDER, conforme o tipo de dúvida:
+1. TERMO, DEFINIÇÃO OU FATO ("o que é...", "qual a diferença entre...", "o que significa..."): responda direto, em até três frases, na linguagem do aluno, com um exemplo concreto. Se o material da aula trata do termo, aponte a página. Termine com UMA pergunta curta de checagem ou de aplicação, para ele usar o termo.
+2. INFORMAÇÃO DA DISCIPLINA (conteúdos, avaliação, bibliografia, datas, o que cai em cada aula): responda direto e SOMENTE com o que está no PLANO DE ENSINO. Se não estiver lá, diga que o plano não informa e oriente a perguntar ao professor. Nunca invente.
+3. DÚVIDA DE COMPREENSÃO ("não entendi por que...", "como funciona..."): pergunte primeiro, em uma frase, o que ele já entendeu ou onde exatamente trava, se isso não estiver claro. Depois explique o essencial em poucas frases, partindo do que ele disse, e faça uma pergunta de checagem.
+4. PEDIDO DE SOLUÇÃO de exercício, trabalho, prova ou da situação-problema da aula: não resolva. Diga que isso é dele e ofereça destravar o conceito que falta, com uma pergunta.
+5. COMO ESTUDAR ESTA DISCIPLINA: dê orientação prática e curta ligada aos conteúdos do plano (por onde começar, o que revisar antes, como se testar).
+6. FORA DA DISCIPLINA: diga em uma frase que isso foge desta disciplina e convide a voltar.
+
+Se o aluno afirmar algo errado, corrija com clareza e mostre por quê.
+
+${blocoComum()}`;
+}
+function systemPrompt() { return S.modo === 'duvida' ? promptDuvida() : promptProblema(); }
+function referencia() {
+  if (!S.aula) return '';
+  let r = '';
+  if (S.aula.plano) r += 'PLANO DE ENSINO DA DISCIPLINA:\n' + S.aula.plano + '\n\n';
+  if (S.aula.material) r += 'MATERIAL DA AULA:\n' + S.aula.material;
+  return r.trim();
 }
 
 /* ================= API ================= */
-function conteudoUsuario(texto, incluirDocs) {
-  if (!incluirDocs || !arquivos.length) return texto;
-  const blocos = arquivos.map(a => ({
-    type: 'document',
-    source: { type: 'base64', media_type: 'application/pdf', data: a.base64 }
-  }));
-  blocos.push({ type: 'text', text: texto });
-  return blocos;
-}
-async function chamarAPI(mensagens) {
-  const url = WORKER_URL || 'https://api.anthropic.com/v1/messages';
+async function chamarAPI(mensagens, opcoes) {
+  const o = opcoes || {};
   let resp;
   try {
-    resp = await fetch(url, {
+    resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1200,
-        system: systemPrompt(),
-        messages: mensagens
+        system: o.system || systemPrompt(),
+        material: o.semMaterial ? '' : referencia(),
+        messages: mensagens,
+        aluno: o.quem || S.uid || '',
+        max_tokens: o.maxTokens || 700
       })
     });
-  } catch (e) {
-    throw new Error('SEM_CONEXAO');
-  }
-  const data = await resp.json();
-  if (data.error) throw new Error(data.error.message || 'erro da API');
+  } catch (e) { throw new Error('SEM_CONEXAO'); }
+  let data;
+  try { data = await resp.json(); } catch { throw new Error('resposta inválida do servidor'); }
+  if (data.error) throw new Error(data.error.message || 'erro do servidor');
+  if (!Array.isArray(data.content)) throw new Error('resposta inválida do servidor');
   return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
 }
 function msgErro(e) {
-  if (e.message === 'SEM_CONEXAO') {
-    return WORKER_URL
-      ? 'Não consegui falar com o servidor do Faísca. Verifique sua internet e tente de novo.'
-      : 'Sem servidor configurado (WORKER_URL), este app só funciona dentro do Claude como artifact.';
+  if (e.message === 'SEM_CONEXAO') return 'Não consegui falar com o servidor do Faísca. Confira sua internet e tente de novo.';
+  return 'A conversa travou por um instante (' + e.message + '). Tente de novo.';
+}
+
+/* ================= TRILHA ================= */
+const MARCADOR = { aluno: '🧑', travei: '🧗', tutor: '⚡', fecho: '🗺️', aviso: '⚠️' };
+const QUEM = { travei: 'Pedido de pista', tutor: 'Faísca', fecho: 'Antes e depois', aviso: 'Aviso' };
+function renderCorpo(alvo, texto) {
+  String(texto).split(/\{\{([^{}]+)\}\}/g).forEach((parte, i) => {
+    if (i % 2 === 0) { alvo.appendChild(document.createTextNode(parte)); return; }
+    const a = el('a', 'pilula', '🔎 ' + parte.trim());
+    a.href = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(parte.trim());
+    a.target = '_blank'; a.rel = 'noopener';
+    alvo.appendChild(a);
+  });
+}
+function addNo(tipo, texto) {
+  const div = el('div', 'no ' + tipo);
+  div.appendChild(el('div', 'marcador', MARCADOR[tipo] || '⚡'));
+  div.appendChild(el('div', 'quem', tipo === 'aluno' ? (S.nome || 'Você') : QUEM[tipo]));
+  const corpo = el('div', 'corpo');
+  if (texto !== undefined) renderCorpo(corpo, texto);
+  div.appendChild(corpo);
+  $('trilha').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+function addMensagemUsuario(conteudo) {
+  const m = /^\[TRAVEI (\d)\]/.exec(conteudo);
+  if (m) addNo('travei', 'Travei. Pista ' + m[1] + ' de 3.'); else addNo('aluno', conteudo);
+}
+function noPensando() {
+  const div = addNo('tutor');
+  div.classList.add('pensando');
+  div.querySelector('.corpo').innerHTML = 'pensando <span class="ponto">·</span><span class="ponto">·</span><span class="ponto">·</span>';
+  return div;
+}
+function travarEntrada(travar) {
+  S.ocupado = travar;
+  $('enviar').disabled = travar; $('travei').disabled = travar || S.concluida; $('fechar').disabled = travar;
+}
+function rotuloTravei() {
+  $('travei').textContent = S.nivelPista === 0 ? '🧗 Travei' : (S.nivelPista < 3 ? '🧗 Outra pista' : '🧗 Pista forte');
+}
+
+/* ================= CONVERSA ================= */
+function saudacao() {
+  const oi = 'Oi' + (S.nome ? ', ' + S.nome.split(' ')[0] : '') + '! Eu sou o Faísca ⚡ ';
+  if (S.modo === 'duvida') {
+    return oi + 'Qual é a sua dúvida sobre ' + S.aula.titulo + ' ou sobre a disciplina? Pode ser um termo que você não entendeu, um conceito, ou como estudar. Pergunte do seu jeito.';
   }
-  return 'A trilha travou por um instante (' + e.message + '). Tente de novo.';
+  return oi + 'Aqui eu não dou a solução pronta: ando junto até VOCÊ chegar lá.\n\nSua situação-problema: ' + S.tarefa.enunciado +
+    '\n\nAntes de qualquer coisa, sem pesquisar: o que você já sabe ou acha sobre isso? Pode ser pouco, pode ser chute. Escreva do seu jeito.';
+}
+async function turno(conteudo) {
+  travarEntrada(true);
+  S.historico.push({ role: 'user', content: conteudo });
+  addMensagemUsuario(conteudo);
+  const pensando = noPensando();
+  try {
+    const resposta = await chamarAPI(S.historico.slice(-40));
+    pensando.remove();
+    S.historico.push({ role: 'assistant', content: resposta });
+    addNo('tutor', resposta);
+    S.trocas++;
+    persistir();
+    if (S.modo === 'duvida') registrarNoPainel({ duvidas: S.duvidas });
+    else registrarNoPainel({ trocas: S.trocas, pistas: S.pistas, antes: S.antes, conversa: conversaParaPainel() });
+    return true;
+  } catch (e) {
+    pensando.remove();
+    S.historico.pop();
+    $('trilha').lastElementChild.remove();
+    addNo('aviso', msgErro(e));
+    return false;
+  } finally {
+    travarEntrada(false);
+    rotuloTravei();
+  }
 }
 async function enviar() {
-  const input = document.getElementById('texto');
-  const texto = input.value.trim();
+  if (S.ocupado || S.concluida) return;
+  const texto = $('texto').value.trim();
   if (!texto) return;
-  const btn = document.getElementById('enviar');
-  btn.disabled = true;
-  input.value = '';
-  const primeiraVez = historico.length === 0;
-  historico.push({ role: 'user', content: conteudoUsuario(texto, primeiraVez) });
-  addNo('user', texto);
-  atualizarProfundidade();
-  const pensando = noPensando();
-  try {
-    const resposta = await chamarAPI(historico);
-    historico.push({ role: 'assistant', content: resposta });
-    pensando.remove();
-    addNo('assistant', resposta);
-  } catch (e) {
-    pensando.remove();
-    historico.pop();
-    addNo('assistant', msgErro(e), 'aviso');
-  } finally {
-    btn.disabled = false;
-    input.focus();
+  $('texto').value = '';
+  if (S.modo === 'duvida') {
+    S.duvidas.push(texto.slice(0, 400));
+    if (S.duvidas.length > 40) S.duvidas.shift();
+    const ok = await turno(texto);
+    if (!ok) { $('texto').value = texto; S.duvidas.pop(); }
+    $('texto').focus();
+    return;
   }
+  const primeira = S.antes === null;
+  if (primeira) S.antes = texto;
+  const nivelAnterior = S.nivelPista;
+  S.nivelPista = 0;
+  const ok = await turno(texto);
+  if (!ok) { $('texto').value = texto; S.nivelPista = nivelAnterior; if (primeira) S.antes = null; }
+  $('texto').focus();
+}
+async function travei() {
+  if (S.ocupado || S.concluida || S.modo === 'duvida') return;
+  if (S.antes === null) {
+    addNo('tutor', 'Sem problema. Me conte primeiro, em uma frase, o que vem à sua cabeça quando lê a situação. Vale chute. É daí que a gente parte.');
+    return;
+  }
+  const nivel = Math.min(3, S.nivelPista + 1);
+  S.nivelPista = nivel; S.pistas++;
+  const ok = await turno('[TRAVEI ' + nivel + '] Travei neste ponto. Preciso de uma pista de nível ' + nivel + '.');
+  if (!ok) { S.nivelPista = nivel - 1; S.pistas--; }
 }
 
-/* ================= MAPA DA EXPEDIÇÃO ================= */
-async function fecharSessao() {
-  if (historico.length < 2) { alert('Dê alguns passos na trilha antes de fechar o mapa.'); return; }
-  const pensando = noPensando();
+/* ================= RELÓGIO (só na situação-problema) ================= */
+function tique() {
+  if (S.modo === 'duvida') return;
+  const total = S.tarefa.minutos * 60;
+  const passou = Math.floor((Date.now() - S.inicio) / 1000);
+  const resta = Math.max(0, total - passou);
+  $('relogio').textContent = String(Math.floor(resta / 60)).padStart(2, '0') + ':' + String(resta % 60).padStart(2, '0');
+  $('relogio').classList.toggle('esgotado', resta === 0);
+  document.querySelector('#barra-tempo > div').style.width = Math.min(100, passou / total * 100) + '%';
+  if (resta === 0 && !S.avisouTempo && !S.concluida && !document.querySelector('.no.fecho')) {
+    S.avisouTempo = true; persistir();
+    const no = addNo('aviso', 'Deu ' + S.tarefa.minutos + ' minutos. Termine o raciocínio em que você está e feche para ver o seu antes e depois.');
+    no.querySelector('.quem').textContent = 'Tempo';
+  }
+  if (S.concluida) { clearInterval(relogioId); $('relogio').textContent = 'Concluída'; }
+}
+
+/* ================= FECHAMENTO: ANTES E DEPOIS ================= */
+function abrirFechamento() {
+  if (S.ocupado || S.concluida || S.modo === 'duvida') return;
+  if (S.antes === null || S.trocas < 1) { addNo('aviso', 'Dê pelo menos um passo antes de fechar.'); return; }
+  if (document.querySelector('.no.fecho')) { document.querySelector('.no.fecho').scrollIntoView({ behavior: 'smooth' }); return; }
+  const no = addNo('fecho');
+  const corpo = no.querySelector('.corpo');
+  corpo.style.whiteSpace = 'normal';
+  corpo.appendChild(el('p', null, 'Hora de fechar. Sem olhar o que você escreveu no começo, responda de novo com as suas palavras:'));
+  const p = el('p', null, S.tarefa.enunciado); p.style.cssText = 'font-weight:700;margin:8px 0;white-space:pre-wrap';
+  corpo.appendChild(p);
+  const ta = el('textarea', 'campo'); ta.id = 'depois-texto'; ta.placeholder = 'Qual é a sua conclusão agora, e por quê?';
+  corpo.appendChild(ta);
+  const linha = el('div'); linha.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+  const ok = el('button', 'btn destaque', 'Ver meu antes e depois ✦'); ok.id = 'depois-ok';
+  const voltar = el('button', 'btn', 'Continuar pensando');
+  ok.onclick = () => concluir(ta.value.trim(), no);
+  voltar.onclick = () => no.remove();
+  linha.appendChild(ok); linha.appendChild(voltar); corpo.appendChild(linha);
+  ta.focus();
+}
+function renderAntesDepois(no) {
+  const corpo = no.querySelector('.corpo');
+  corpo.textContent = ''; corpo.style.whiteSpace = 'normal';
+  const grade = el('div', 'antes-depois');
+  const a = el('div'); a.appendChild(el('h3', null, 'No começo você disse')); a.appendChild(el('p', null, S.antes));
+  const d = el('div', 'ad-depois'); d.appendChild(el('h3', null, 'Agora você diz')); d.appendChild(el('p', null, S.depois));
+  grade.appendChild(a); grade.appendChild(d); corpo.appendChild(grade);
+  if (S.fechamento) { const m = el('div', 'fecho-msg'); renderCorpo(m, S.fechamento); corpo.appendChild(m); }
+}
+async function concluir(depois, no) {
+  if (S.ocupado) return;
+  if (depois.length < 3) { $('depois-texto').focus(); return; }
+  travarEntrada(true);
+  $('depois-ok').disabled = true; $('depois-ok').textContent = 'Comparando...';
   const pedido = {
     role: 'user',
-    content: 'Encerre a expedição. Escreva, para MIM (o aluno), o "mapa da expedição": o caminho que EU percorri, os passos de raciocínio que eu mesmo dei, o ponto mais alto (minha melhor construção), o que ficou em aberto, e uma pergunta final para eu levar comigo. Não entregue nenhuma resposta que eu não tenha construído. Fale comigo diretamente, com calor humano e sem bajulação.'
+    content: `[FECHAMENTO DA SESSÃO] O aluno encerrou. Não continue a tutoria.
+Resposta dele no início (ANTES): «${S.antes}»
+Resposta dele agora (DEPOIS): «${depois}»
+
+Responda SOMENTE com um JSON válido, sem texto fora dele, neste formato:
+{"mensagem": "...", "percurso": "...", "equivocos": ["..."]}
+
+"mensagem": fale direto com o aluno, em até 110 palavras e na linguagem dele. Diga o que mudou entre o antes e o depois, citando palavras dele. Diga o que ele já sabia no começo e se confirmou. Diga o que ainda ficou em aberto. Termine com uma pergunta para ele levar. Sem nota, sem conceito, sem elogio vazio, e sem entregar solução que ele não construiu.
+"percurso": texto para o PROFESSOR, em 2 a 4 frases impessoais e descritivas: de onde o aluno partiu, quais passos de raciocínio deu, em que pontos pediu pista, e a que conclusão chegou e com qual justificativa. Descreva só o que aparece na conversa. Sem nota, sem conceito, sem adjetivo de julgamento sobre o aluno.
+"equivocos": lista com 0 a 4 erros conceituais que o aluno manifestou em qualquer momento, inclusive os que ele superou. Cada item é uma frase curta e impessoal, no formato "Confunde X com Y" ou "Acredita que ...". Não inclua falta de vocabulário nem erro de português. Lista vazia se não houve erro conceitual.`
   };
+  let mensagem = null, percurso = '', equivocos = [], analiseOk = true;
   try {
-    const resumo = await chamarAPI([...historico, pedido]);
-    pensando.remove();
-    addNo('assistant', resumo, 'resumo');
+    const bruto = await chamarAPI([...S.historico.slice(-40), pedido], { maxTokens: 1100 });
+    const j = extrairJSON(bruto);
+    if (j && typeof j.mensagem === 'string') {
+      mensagem = j.mensagem;
+      if (typeof j.percurso === 'string') percurso = j.percurso.trim().slice(0, 900);
+      if (Array.isArray(j.equivocos)) equivocos = j.equivocos.filter(x => typeof x === 'string' && x.trim()).slice(0, 4).map(x => x.trim().slice(0, 240));
+    } else { analiseOk = false; }
   } catch (e) {
-    pensando.remove();
-    addNo('assistant', msgErro(e), 'aviso');
+    travarEntrada(false);
+    $('depois-ok').disabled = false; $('depois-ok').textContent = 'Ver meu antes e depois ✦';
+    addNo('aviso', msgErro(e));
+    return;
   }
+  S.depois = depois; S.fechamento = mensagem; S.concluida = true;
+  persistir();
+  renderAntesDepois(no);
+  if (!analiseOk) addNo('aviso', 'Seu antes e depois foi salvo, mas o comentário final não pôde ser gerado agora.');
+  if (naAula()) await registrarNoPainel({
+    depois: S.depois, antes: S.antes, concluida: true, concluidaEm: agoraServidor(),
+    equivocos, percurso, analiseOk, trocas: S.trocas, pistas: S.pistas, conversa: conversaParaPainel(),
+    minutos: Math.round((Date.now() - S.inicio) / 60000)
+  });
+  travarEntrada(false);
+  encerrarEntrada();
+  no.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-/* ================= SALVAR / REABRIR ================= */
-function historicoTexto() {
-  return historico.map(m => ({
-    role: m.role,
-    content: (typeof m.content === 'string' ? m.content
-      : m.content.filter(b => b.type === 'text').map(b => b.text).join('\n'))
-      .replace(/\{\{([^{}]+)\}\}/g, (_, t) => t.trim() + ' [buscar no Google Scholar]')
-  }));
+function encerrarEntrada() {
+  $('texto').disabled = true; $('texto').placeholder = 'Situação-problema concluída.';
+  $('enviar').disabled = true; $('travei').disabled = true; $('fechar').classList.add('oculto');
+  tique();
 }
-function salvarArquivo() {
-  if (!historico.length) { alert('Ainda não há expedição.'); return; }
-  const dados = {
-    app: 'Faisca', versao: 2,
-    data: new Date().toISOString(),
-    nome: nomeAluno, perfil, humor, passos,
-    tema: document.documentElement.getAttribute('data-tema'),
-    materiais: arquivos.map(a => a.nome),
-    historico: historicoTexto()
-  };
-  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+function baixarConversa() {
+  if (!S.historico.length) return;
+  let txt = 'FAÍSCA · registro da conversa\nData: ' + new Date().toLocaleString('pt-BR') + '\n';
+  if (S.aula) txt += 'Disciplina: ' + S.aula.disciplina + '\nAula: ' + S.aula.titulo + '\n';
+  if (S.modo !== 'duvida') txt += 'Situação-problema: ' + S.tarefa.enunciado + '\n';
+  if (S.nome) txt += 'Aluno: ' + S.nome + '\n';
+  txt += '\n' + S.historico.map(m => (m.role === 'user' ? (S.nome || 'ALUNO') : 'FAÍSCA') + ':\n' +
+    limparTravei(m.content).replace(/\{\{([^{}]+)\}\}/g, (_, t) => t.trim())).join('\n\n');
+  if (S.depois) txt += '\n\nANTES:\n' + S.antes + '\n\nDEPOIS:\n' + S.depois + (S.fechamento ? '\n\nFECHAMENTO:\n' + S.fechamento : '');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'faisca_expedicao.json';
-  a.click();
-  let txt = 'FAÍSCA · registro da expedição\nData: ' + new Date().toLocaleString('pt-BR') + '\n';
-  if (nomeAluno) txt += 'Aluno: ' + nomeAluno + '\n';
-  txt += '\n' + historicoTexto().map(m =>
-    (m.role === 'user' ? (nomeAluno || 'ALUNO') : 'FAÍSCA') + ':\n' + m.content).join('\n\n');
-  const blob2 = new Blob([txt], { type: 'text/plain' });
-  const a2 = document.createElement('a');
-  a2.href = URL.createObjectURL(blob2);
-  a2.download = 'faisca_expedicao.txt';
-  a2.click();
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'faisca_conversa.txt'; a.click();
 }
-document.getElementById('abrir-salvo').addEventListener('click', () =>
-  document.getElementById('input-json').click());
-document.getElementById('input-json').addEventListener('change', async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  try {
-    const dados = JSON.parse(await f.text());
-    if (dados.app !== 'Faisca' || !Array.isArray(dados.historico)) throw new Error();
-    nomeAluno = dados.nome || '';
-    perfil = dados.perfil || 'guia';
-    humor = dados.humor || 'tranquilo';
-    passos = 0;
-    if (dados.tema) document.documentElement.setAttribute('data-tema', dados.tema);
-    historico = dados.historico.map(m => ({ role: m.role, content: m.content }));
-    entrarNoApp();
-    document.getElementById('trilha').innerHTML = '';
-    for (const m of historico) {
-      addNo(m.role, m.content);
-      if (m.role === 'user') atualizarProfundidade();
-    }
-    if (dados.materiais && dados.materiais.length) {
-      addNo('assistant',
-        'Expedição restaurada. Os PDFs (' + dados.materiais.join(', ') + ') não vão junto no arquivo salvo. Para eu voltar a citar páginas, inicie uma expedição nova anexando o material.',
-        'aviso');
-    }
-  } catch {
-    alert('Este arquivo não é uma expedição do Faísca.');
+
+/* ================= ABRIR UMA CONVERSA (problema, dúvida ou livre) ================= */
+function iniciarModo(modo) {
+  S.modo = modo;
+  Object.assign(S, { historico: [], duvidas: [], antes: null, depois: null, fechamento: null, nivelPista: 0, pistas: 0, trocas: 0, inicio: Date.now(), concluida: false, avisouTempo: false, ocupado: false });
+  if (modo === 'problema') S.tarefa = { titulo: S.aula.titulo, enunciado: S.aula.problemas[S.problemaIdx], minutos: S.aula.minutos };
+  if (modo === 'duvida') S.tarefa = { titulo: 'Dúvidas · ' + S.aula.titulo, enunciado: '', minutos: 0 };
+  const salvo = lerLocal(chaveLocal());
+  if (salvo) Object.assign(S, {
+    historico: salvo.historico || [], duvidas: salvo.duvidas || [], antes: salvo.antes ?? null, depois: salvo.depois ?? null,
+    fechamento: salvo.fechamento ?? null, nivelPista: salvo.nivelPista || 0, pistas: salvo.pistas || 0,
+    trocas: salvo.trocas || 0, inicio: salvo.inicio || Date.now(), concluida: !!salvo.concluida, avisouTempo: !!salvo.avisouTempo
+  });
+  const prefs = lerLocal('faisca:prefs');
+  if (prefs) { S.perfil = prefs.perfil || 'guia'; if (prefs.tema) aplicarTema(prefs.tema); marcarPerfil(); }
+  mostrar('app');
+  const ehDuvida = modo === 'duvida';
+  ['relogio', 'fechar', 'travei', 'barra-tempo'].forEach(i => $(i).classList.toggle('oculto', ehDuvida));
+  $('voltar-aula').classList.toggle('oculto', modo === 'livre');
+  $('texto').disabled = false; $('enviar').disabled = false; $('travei').disabled = false;
+  $('texto').placeholder = ehDuvida ? 'Qual é a sua dúvida?' : 'Escreva do seu jeito...';
+  $('faixa-titulo').textContent = S.tarefa.titulo;
+  $('trilha').textContent = '';
+  addNo('tutor', saudacao());
+  S.historico.forEach(m => m.role === 'user' ? addMensagemUsuario(m.content) : addNo('tutor', m.content));
+  if (!salvo) persistir();
+  clearInterval(relogioId);
+  if (!ehDuvida) {
+    if (S.concluida) { renderAntesDepois(addNo('fecho')); encerrarEntrada(); }
+    rotuloTravei();
+    relogioId = setInterval(tique, 1000); tique();
   }
+  if (!S.concluida) $('texto').focus();
+}
+function voltarParaAula() {
+  clearInterval(relogioId);
+  mostrar('tela-tarefa'); mostrarHub();
+}
+
+/* ================= AJUSTES ================= */
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-tema', tema);
+  document.querySelectorAll('button[data-tema]').forEach(b => b.classList.toggle('ativa', b.dataset.tema === tema));
+}
+function marcarPerfil() { document.querySelectorAll('#perfis .chip').forEach(b => b.classList.toggle('ativa', b.dataset.perfil === S.perfil)); }
+document.querySelectorAll('button[data-tema]').forEach(b => b.addEventListener('click', () => { aplicarTema(b.dataset.tema); if (S.tarefa) persistir(); }));
+document.querySelectorAll('#perfis .chip').forEach(b => b.addEventListener('click', () => { S.perfil = b.dataset.perfil; marcarPerfil(); persistir(); }));
+document.querySelectorAll('#humores .chip').forEach(b => b.addEventListener('click', () => {
+  S.humor = S.humor === b.dataset.humor ? null : b.dataset.humor;
+  document.querySelectorAll('#humores .chip').forEach(x => x.classList.toggle('ativa', x.dataset.humor === S.humor));
+}));
+$('abrir-ajustes').addEventListener('click', () => $('ajustes').classList.toggle('oculto'));
+$('trilha').addEventListener('click', () => $('ajustes').classList.add('oculto'));
+$('enviar').addEventListener('click', enviar);
+$('travei').addEventListener('click', travei);
+$('fechar').addEventListener('click', abrirFechamento);
+$('baixar').addEventListener('click', baixarConversa);
+$('voltar-aula').addEventListener('click', voltarParaAula);
+$('texto').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } });
+
+/* ================= ALUNO: ENTRADA PELO CÓDIGO DA AULA ================= */
+function estadoTarefa(tipo, texto) {
+  $('tarefa-estado').className = 'estado ' + tipo; $('tarefa-estado').textContent = texto;
+  $('tarefa-estado').classList.remove('oculto'); $('tarefa-conteudo').classList.add('oculto');
+}
+function mostrarHub() {
+  $('tarefa-estado').classList.add('oculto'); $('tarefa-conteudo').classList.remove('oculto');
+  $('bloco-nome').classList.add('oculto'); $('bloco-hub').classList.remove('oculto');
+  const temProblema = S.aula.problemas.length > 0 && S.problemaIdx >= 0;
+  $('ir-problema').classList.toggle('oculto', !temProblema);
+  if (temProblema) {
+    const p = lerLocal(chaveLocal('problema'));
+    $('status-problema').textContent = p && p.concluida ? 'Concluída. Toque para rever o seu antes e depois.'
+      : p && p.trocas ? 'Em andamento. Toque para continuar.'
+      : 'Leva cerca de ' + S.aula.minutos + ' minutos. O Faísca não dá a solução, ele anda junto.';
+  }
+}
+async function abrirAula(codigo) {
+  mostrar('tela-tarefa');
+  estadoTarefa('carregando', 'Abrindo a aula...');
+  if (!firebaseDisponivel()) { estadoTarefa('erro', ERRO_FIREBASE); return; }
+  try {
+    let u = await usuarioAtual();
+    if (!u) u = (await auth.signInAnonymously()).user;
+    S.uid = u.uid;
+    const doc = await db.collection('aulas').doc(codigo).get();
+    if (!doc.exists) { estadoTarefa('vazio', 'Não encontrei nenhuma aula com o código ' + codigo + '. Confira com seu professor.'); return; }
+    const a = doc.data();
+    const dDoc = await db.collection('disciplinas').doc(a.disciplinaId).get();
+    const d = dDoc.exists ? dDoc.data() : {};
+    S.aula = {
+      codigo, titulo: a.titulo, minutos: a.minutos || MINUTOS_PADRAO, material: a.material || '',
+      problemas: Array.isArray(a.problemas) ? a.problemas : [], profNome: a.profNome || '',
+      disciplina: d.nome || a.disciplinaNome || '', publico: d.publico || '', plano: d.plano || ''
+    };
+    S.modo = 'problema';
+    $('tarefa-de').textContent = S.aula.profNome ? 'Aula de ' + S.aula.profNome : 'Aula';
+    $('tarefa-titulo').textContent = S.aula.titulo;
+    $('tarefa-disciplina').textContent = S.aula.disciplina + (S.aula.publico ? ' · ' + S.aula.publico : '');
+    const eu = lerLocal('faisca:' + codigo + ':eu');
+    if (eu && eu.nome) { S.nome = eu.nome; S.problemaIdx = eu.problemaIdx; mostrarHub(); return; }
+    $('tarefa-estado').classList.add('oculto'); $('tarefa-conteudo').classList.remove('oculto');
+    $('bloco-nome').classList.remove('oculto'); $('bloco-hub').classList.add('oculto');
+    $('nome').focus();
+  } catch (e) {
+    console.error(e);
+    estadoTarefa('erro', 'Não foi possível abrir a aula. Confira sua internet e recarregue a página.');
+  }
+}
+$('comecar').addEventListener('click', async () => {
+  const nome = $('nome').value.trim();
+  if (nome.length < 2) { $('nome').focus(); return; }
+  S.nome = nome;
+  const n = S.aula.problemas.length;
+  S.problemaIdx = n ? crypto.getRandomValues(new Uint32Array(1))[0] % n : -1;
+  gravarLocal('faisca:' + S.aula.codigo + ':eu', { nome, problemaIdx: S.problemaIdx });
+  $('comecar').disabled = true;
+  await registrarNoPainel({ nome, uid: S.uid, iniciadaEm: agoraServidor(), problemaIdx: S.problemaIdx, concluida: false, trocas: 0, pistas: 0, antes: null, depois: null, equivocos: [], duvidas: [], percurso: '', conversa: [] }, true);
+  $('comecar').disabled = false;
+  mostrarHub();
+});
+$('nome').addEventListener('keydown', e => { if (e.key === 'Enter') $('comecar').click(); });
+$('ir-problema').addEventListener('click', () => iniciarModo('problema'));
+$('ir-duvida').addEventListener('click', () => iniciarModo('duvida'));
+
+/* ================= TELA INICIAL ================= */
+$('entrar-codigo').addEventListener('click', () => {
+  const c = $('codigo').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!c) { $('codigo').focus(); return; }
+  location.search = '?t=' + c;
+});
+$('codigo').addEventListener('keydown', e => { if (e.key === 'Enter') $('entrar-codigo').click(); });
+$('ir-prof').addEventListener('click', () => { location.search = '?prof=1'; });
+function comecarLivre() {
+  const tema = $('tema-livre').value.trim();
+  if (tema.length < 4) { $('tema-livre').focus(); return; }
+  S.aula = null; S.uid = 'livre'; S.modo = 'livre';
+  S.tarefa = { titulo: 'Tema livre', enunciado: tema, minutos: MINUTOS_PADRAO };
+  try { localStorage.removeItem(chaveLocal('livre')); } catch {}
+  iniciarModo('livre');
+}
+$('comecar-livre').addEventListener('click', comecarLivre);
+$('tema-livre').addEventListener('keydown', e => { if (e.key === 'Enter') comecarLivre(); });
+
+/* ================= PROFESSOR ================= */
+const P = { user: null, disciplina: null, aulas: [], aula: null, sessoes: [], pararEscuta: null };
+const SECOES_PROF = ['prof-login', 'prof-casa', 'prof-disc', 'prof-painel'];
+function estadoProf(tipo, texto) {
+  $('prof-estado').className = 'estado ' + (tipo || ''); $('prof-estado').textContent = texto || '';
+  $('prof-estado').classList.toggle('oculto', !tipo);
+}
+function secaoProf(id) { SECOES_PROF.forEach(s => $(s).classList.toggle('oculto', s !== id)); window.scrollTo(0, 0); }
+function pararEscuta() { if (P.pararEscuta) { P.pararEscuta(); P.pararEscuta = null; } }
+function rotearProf() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('painel')) abrirPainel(q.get('painel'));
+  else if (q.get('d')) abrirDisciplina(q.get('d'));
+  else abrirCasa();
+}
+function irPara(busca) { history.pushState(null, '', busca); rotearProf(); }
+window.addEventListener('popstate', () => { if (P.user) rotearProf(); });
+async function iniciarProfessor() {
+  mostrar('tela-prof'); secaoProf(null);
+  if (!firebaseDisponivel()) { estadoProf('erro', ERRO_FIREBASE); return; }
+  auth.onAuthStateChanged(u => {
+    if (!u || u.isAnonymous) { P.user = null; pararEscuta(); estadoProf(null); secaoProf('prof-login'); $('prof-sair').classList.add('oculto'); $('prof-voltar').classList.add('oculto'); $('prof-quem').textContent = ''; return; }
+    P.user = u;
+    $('prof-quem').textContent = u.displayName || u.email || '';
+    $('prof-sair').classList.remove('oculto');
+    rotearProf();
+  });
+}
+$('prof-entrar').addEventListener('click', async () => {
+  try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch (e) { console.error(e); estadoProf('erro', 'Não foi possível entrar com o Google. Libere pop-ups para este site e tente de novo.'); }
+});
+$('prof-sair').addEventListener('click', () => auth.signOut());
+$('prof-voltar').addEventListener('click', () => {
+  if (!$('prof-painel').classList.contains('oculto') && P.aula) irPara('?d=' + P.aula.disciplinaId); else irPara('?prof=1');
 });
 
-/* ================= TECLADO ================= */
-document.getElementById('texto').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+/* ---- leitura de PDF com marcação de página ---- */
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+async function extrairPDF(arquivo, limite) {
+  if (typeof pdfjsLib === 'undefined') {
+    await carregarScript(PDFJS + 'pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+  }
+  const pdf = await pdfjsLib.getDocument({ data: await arquivo.arrayBuffer() }).promise;
+  let texto = '', comTexto = 0;
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const pagina = await pdf.getPage(n);
+    const conteudo = await pagina.getTextContent();
+    const linha = conteudo.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+    if (linha.length > 20) comTexto++;
+    texto += '[PÁGINA ' + n + ']\n' + linha + '\n\n';
+  }
+  if (comTexto === 0) throw new Error('PDF_SEM_TEXTO');
+  if (texto.length > limite) throw new Error('PDF_GRANDE');
+  return { texto: texto.trim(), paginas: pdf.numPages, nome: arquivo.name };
+}
+function textoErroPDF(e) {
+  return e.message === 'PDF_SEM_TEXTO' ? 'Este PDF não tem texto selecionável (parece escaneado). Use um PDF com texto.'
+    : e.message === 'PDF_GRANDE' ? 'O PDF é grande demais. Envie só a parte necessária.'
+    : null;
+}
+function novoCodigo() {
+  const letras = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const v = new Uint32Array(6); crypto.getRandomValues(v);
+  return Array.from(v, x => letras[x % letras.length]).join('');
+}
+function avisar(id, texto) { $(id).textContent = texto || ''; $(id).classList.toggle('oculto', !texto); }
+
+/* ---- minhas disciplinas ---- */
+async function abrirCasa() {
+  pararEscuta();
+  secaoProf('prof-casa'); $('prof-voltar').classList.add('oculto');
+  estadoProf('carregando', 'Carregando suas disciplinas...');
+  const lista = $('lista-disciplinas'); lista.textContent = '';
+  try {
+    const snap = await db.collection('disciplinas').where('profUid', '==', P.user.uid).get();
+    const ds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    estadoProf(null);
+    if (!ds.length) { lista.appendChild(el('div', 'estado vazio', 'Você ainda não criou nenhuma disciplina.')); return; }
+    ds.forEach(d => {
+      const item = el('div', 'item-tarefa');
+      const txt = el('div'); txt.appendChild(el('b', null, d.nome));
+      txt.appendChild(el('small', null, (d.publico || 'Sem turma informada') + (d.planoNome ? ' · plano: ' + d.planoNome : ' · sem plano de ensino')));
+      const b = el('button', 'btn cor', 'Abrir'); b.onclick = () => irPara('?d=' + d.id);
+      item.appendChild(txt); item.appendChild(b); lista.appendChild(item);
+    });
+  } catch (e) { console.error(e); estadoProf('erro', 'Falha ao carregar as disciplinas. Confira a conexão e recarregue.'); }
+}
+$('nd-criar').addEventListener('click', async () => {
+  avisar('nd-erro', '');
+  const nome = $('nd-nome').value.trim();
+  if (nome.length < 3) { avisar('nd-erro', 'Dê um nome para a disciplina.'); return; }
+  const botao = $('nd-criar'); botao.disabled = true; botao.textContent = 'Criando...';
+  try {
+    let plano = { texto: '', paginas: 0, nome: '' };
+    if ($('nd-plano').files[0]) { botao.textContent = 'Lendo o plano...'; plano = await extrairPDF($('nd-plano').files[0], LIMITE_PLANO); }
+    const ref = db.collection('disciplinas').doc(novoCodigo() + novoCodigo());
+    await ref.set({ nome, publico: $('nd-publico').value.trim(), plano: plano.texto, planoNome: plano.nome, planoPaginas: plano.paginas,
+      profUid: P.user.uid, profNome: P.user.displayName || '', criadaEm: agoraServidor() });
+    ['nd-nome', 'nd-publico', 'nd-plano'].forEach(i => { $(i).value = ''; });
+    irPara('?d=' + ref.id);
+  } catch (e) {
+    console.error(e);
+    avisar('nd-erro', textoErroPDF(e) || 'Não foi possível criar a disciplina. Confira a conexão e tente de novo.');
+  } finally { botao.disabled = false; botao.textContent = 'Criar disciplina'; }
 });
+
+/* ---- uma disciplina e suas aulas ---- */
+function infoDisciplina() {
+  const d = P.disciplina;
+  $('dc-nome').textContent = d.nome;
+  $('dc-info').textContent = (d.publico || 'Sem turma informada') + ' · ' + (d.planoNome ? 'Plano de ensino: ' + d.planoNome + ' (' + d.planoPaginas + (d.planoPaginas === 1 ? ' página)' : ' páginas)') : 'Sem plano de ensino. Sem ele, o Faísca não responde sobre avaliação, conteúdos e bibliografia.');
+}
+async function abrirDisciplina(id) {
+  pararEscuta();
+  secaoProf(null); $('prof-voltar').classList.remove('oculto');
+  estadoProf('carregando', 'Abrindo a disciplina...');
+  try {
+    const doc = await db.collection('disciplinas').doc(id).get();
+    if (!doc.exists) { estadoProf('vazio', 'Disciplina não encontrada.'); return; }
+    const d = Object.assign({ id }, doc.data());
+    if (d.profUid !== P.user.uid) { estadoProf('erro', 'Esta disciplina pertence a outro professor.'); return; }
+    P.disciplina = d;
+    estadoProf(null); secaoProf('prof-disc');
+    infoDisciplina(); $('dc-plano-estado').textContent = '';
+    if (!$('na-problemas').children.length) addCampoProblema('');
+    await carregarAulas();
+  } catch (e) { console.error(e); estadoProf('erro', 'Falha ao abrir a disciplina. Confira a conexão e recarregue.'); }
+}
+async function carregarAulas() {
+  const est = $('dc-aulas-estado'), tab = $('dc-tabela'), corpo = tab.querySelector('tbody');
+  est.className = 'estado carregando'; est.textContent = 'Carregando as aulas...'; est.classList.remove('oculto'); tab.classList.add('oculto');
+  try {
+    const snap = await db.collection('aulas').where('profUid', '==', P.user.uid).get();
+    P.aulas = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).filter(a => a.disciplinaId === P.disciplina.id)
+      .sort((a, b) => ((a.criadaEm && a.criadaEm.seconds) || 0) - ((b.criadaEm && b.criadaEm.seconds) || 0));
+    corpo.textContent = '';
+    if (!P.aulas.length) { est.className = 'estado vazio'; est.textContent = 'Nenhuma aula ainda. Crie a primeira logo abaixo.'; return; }
+    for (const a of P.aulas) {
+      const ss = (await db.collection('aulas').doc(a.id).collection('sessoes').get()).docs.map(d => d.data());
+      const tr = el('tr');
+      tr.appendChild(el('td', null, a.titulo));
+      const c = el('td'); c.appendChild(el('b', null, a.id)); tr.appendChild(c);
+      tr.appendChild(el('td', null, String(ss.length)));
+      tr.appendChild(el('td', null, (a.problemas || []).length ? String(ss.filter(s => s.concluida).length) : 'sem problema'));
+      tr.appendChild(el('td', null, String(ss.reduce((n, s) => n + (s.duvidas || []).length, 0))));
+      const td = el('td'); const b = el('button', 'btn cor mini-btn', 'Painel'); b.onclick = () => irPara('?painel=' + a.id);
+      td.appendChild(b); tr.appendChild(td); corpo.appendChild(tr);
+    }
+    est.classList.add('oculto'); tab.classList.remove('oculto');
+  } catch (e) { console.error(e); est.className = 'estado erro'; est.textContent = 'Falha ao carregar as aulas. Recarregue a página.'; }
+}
+$('dc-plano').addEventListener('change', async () => {
+  const arq = $('dc-plano').files[0]; if (!arq) return;
+  $('dc-plano-estado').textContent = 'Lendo o plano...';
+  try {
+    const r = await extrairPDF(arq, LIMITE_PLANO);
+    await db.collection('disciplinas').doc(P.disciplina.id).update({ plano: r.texto, planoNome: r.nome, planoPaginas: r.paginas });
+    Object.assign(P.disciplina, { plano: r.texto, planoNome: r.nome, planoPaginas: r.paginas });
+    infoDisciplina(); $('dc-plano-estado').textContent = 'Plano atualizado.';
+  } catch (e) { console.error(e); $('dc-plano-estado').textContent = textoErroPDF(e) || 'Não foi possível enviar o plano.'; }
+  $('dc-plano').value = '';
+});
+function addCampoProblema(texto) {
+  const caixa = el('div', 'problema-item');
+  const cab = el('div', 'cab'); cab.appendChild(el('span', 'num'));
+  const rm = el('button', null, 'remover'); rm.onclick = () => { caixa.remove(); numerarProblemas(); };
+  cab.appendChild(rm); caixa.appendChild(cab);
+  const ta = el('textarea', 'campo'); ta.maxLength = 2000; ta.value = texto || '';
+  ta.placeholder = 'Descreva a situação e o que o aluno deve concluir ou decidir.';
+  caixa.appendChild(ta); $('na-problemas').appendChild(caixa); numerarProblemas();
+}
+function numerarProblemas() { $('na-problemas').querySelectorAll('.num').forEach((s, i) => { s.textContent = 'Situação-problema ' + (i + 1); }); }
+function lerProblemas() { return Array.from($('na-problemas').querySelectorAll('textarea')).map(t => t.value.trim()).filter(t => t.length >= 10); }
+$('na-mais').addEventListener('click', () => addCampoProblema(''));
+$('na-variar').addEventListener('click', async () => {
+  const base = lerProblemas()[0];
+  if (!base) { $('na-variar-estado').textContent = 'Escreva a primeira situação-problema antes.'; return; }
+  const b = $('na-variar'); b.disabled = true; $('na-variar-estado').textContent = 'Gerando rascunhos...';
+  try {
+    const bruto = await chamarAPI([{ role: 'user', content: `Disciplina: ${P.disciplina.nome}. Aula: ${$('na-titulo').value.trim() || '(sem título)'}.
+Situação-problema original escrita pelo professor:
+«${base}»
+
+Escreva 3 variações desta situação-problema. Cada variação deve exigir o MESMO conceito e ter a MESMA dificuldade, mudando o contexto ou os dados, para que cada aluno receba uma diferente. Use casos hipotéticos e genéricos. Não cite números, lugares, autores ou estudos reais. Responda SOMENTE com JSON válido:
+{"variacoes": ["...", "...", "..."]}` }],
+      { system: 'Você redige rascunhos de situações-problema para um professor revisar. Não invente dados reais.', semMaterial: true, quem: 'prof:' + P.user.uid, maxTokens: 1400 });
+    const j = extrairJSON(bruto);
+    const vs = j && Array.isArray(j.variacoes) ? j.variacoes.filter(v => typeof v === 'string' && v.trim().length >= 10).slice(0, 3) : [];
+    if (!vs.length) throw new Error('formato inesperado');
+    vs.forEach(v => addCampoProblema(v.trim()));
+    $('na-variar-estado').textContent = vs.length + ' rascunhos adicionados. Revise cada um antes de criar a aula.';
+  } catch (e) { console.error(e); $('na-variar-estado').textContent = 'Não foi possível gerar agora (' + (e.message === 'SEM_CONEXAO' ? 'sem conexão' : e.message) + ').'; }
+  finally { b.disabled = false; }
+});
+$('na-criar').addEventListener('click', async () => {
+  avisar('na-erro', '');
+  const titulo = $('na-titulo').value.trim();
+  const minutos = Math.min(60, Math.max(5, parseInt($('na-minutos').value, 10) || MINUTOS_PADRAO));
+  if (titulo.length < 3) { avisar('na-erro', 'Dê um título para a aula.'); return; }
+  const problemas = lerProblemas();
+  const botao = $('na-criar'); botao.disabled = true; botao.textContent = 'Criando...';
+  try {
+    let mat = { texto: '', paginas: 0, nome: '' };
+    if ($('na-pdf').files[0]) { botao.textContent = 'Lendo o PDF...'; mat = await extrairPDF($('na-pdf').files[0], LIMITE_MATERIAL); }
+    let codigo = novoCodigo();
+    while ((await db.collection('aulas').doc(codigo).get()).exists) codigo = novoCodigo();
+    await db.collection('aulas').doc(codigo).set({
+      titulo, minutos, problemas, material: mat.texto, materialNome: mat.nome, paginas: mat.paginas,
+      disciplinaId: P.disciplina.id, disciplinaNome: P.disciplina.nome,
+      profUid: P.user.uid, profNome: P.user.displayName || '', criadaEm: agoraServidor()
+    });
+    ['na-titulo', 'na-pdf'].forEach(i => { $(i).value = ''; });
+    $('na-problemas').textContent = ''; $('na-variar-estado').textContent = '';
+    irPara('?painel=' + codigo);
+  } catch (e) {
+    console.error(e);
+    avisar('na-erro', textoErroPDF(e) || 'Não foi possível criar a aula. Confira a conexão e tente de novo.');
+  } finally { botao.disabled = false; botao.textContent = 'Criar aula'; }
+});
+
+/* ---- painel de uma aula ---- */
+async function abrirPainel(codigo) {
+  pararEscuta();
+  secaoProf(null); $('prof-voltar').classList.remove('oculto');
+  estadoProf('carregando', 'Abrindo o painel...');
+  try {
+    const doc = await db.collection('aulas').doc(codigo).get();
+    if (!doc.exists) { estadoProf('vazio', 'Aula não encontrada.'); return; }
+    const a = Object.assign({ id: codigo }, doc.data());
+    if (a.profUid !== P.user.uid) { estadoProf('erro', 'Este painel pertence a outro professor.'); return; }
+    P.aula = a; P.sessoes = [];
+    estadoProf(null); secaoProf('prof-painel');
+    const link = location.origin + location.pathname + '?t=' + codigo;
+    $('pn-titulo').textContent = a.titulo;
+    $('pn-enunciado').textContent = a.disciplinaNome || '';
+    $('pn-link').value = link; $('pn-codigo').textContent = codigo;
+    const np = (a.problemas || []).length;
+    $('pn-material').textContent = (a.materialNome ? 'Material: ' + a.materialNome + ' (' + a.paginas + (a.paginas === 1 ? ' página). ' : ' páginas). ') : 'Sem material anexado. ') +
+      (np ? np + (np === 1 ? ' situação-problema, ' : ' situações-problema, uma por aluno por sorteio, ') + a.minutos + ' minutos.' : 'Sem situação-problema: aula só com dúvidas.');
+    desenharQR(link);
+    renderGrupos(CFG_ERROS); renderGrupos(CFG_DUVIDAS);
+    $('pn-sessoes-estado').className = 'estado carregando'; $('pn-sessoes-estado').textContent = 'Carregando a turma...';
+    $('pn-sessoes-estado').classList.remove('oculto'); $('pn-tabela').classList.add('oculto'); $('pn-numeros').textContent = '';
+    P.pararEscuta = db.collection('aulas').doc(codigo).collection('sessoes').onSnapshot(snap => {
+      P.sessoes = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
+        .sort((x, y) => String(x.nome || '').localeCompare(String(y.nome || ''), 'pt-BR'));
+      renderSessoes(); renderGrupos(CFG_ERROS); renderGrupos(CFG_DUVIDAS);
+    }, e => {
+      console.error(e);
+      $('pn-sessoes-estado').className = 'estado erro'; $('pn-sessoes-estado').textContent = 'Falha ao carregar a turma. Recarregue a página.';
+      $('pn-sessoes-estado').classList.remove('oculto');
+    });
+  } catch (e) { console.error(e); estadoProf('erro', 'Falha ao abrir o painel. Confira a conexão e recarregue.'); }
+}
+async function desenharQR(link) {
+  const alvo = $('qr'); alvo.textContent = '';
+  try {
+    if (typeof QRCode === 'undefined') await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
+    new QRCode(alvo, { text: link, width: 140, height: 140 });
+  } catch (e) { alvo.textContent = 'QR indisponível. Use o link.'; alvo.style.fontSize = '13px'; }
+}
+$('pn-copiar').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('pn-link').value); } catch { $('pn-link').select(); document.execCommand('copy'); }
+  $('pn-copiar').textContent = 'Copiado'; setTimeout(() => { $('pn-copiar').textContent = 'Copiar link'; }, 1500);
+});
+const abertas = new Set();
+function situacao(x) { return x.concluida ? ['ok', 'Concluiu'] : (x.trocas || 0) > 0 ? ['andamento', 'Em andamento'] : ['nao', 'Não iniciou']; }
+function renderSessoes() {
+  const s = P.sessoes, concluidas = s.filter(x => x.concluida);
+  const numeros = $('pn-numeros'); numeros.textContent = '';
+  const cartao = (valor, rotulo) => { const d = el('div', 'numero'); d.appendChild(el('b', null, valor)); d.appendChild(el('span', null, rotulo)); numeros.appendChild(d); };
+  cartao(s.length, 'entraram na aula');
+  cartao(concluidas.length, 'concluíram o problema');
+  cartao(s.filter(x => (x.duvidas || []).length > 0).length, 'tiraram dúvida');
+  cartao(s.filter(x => (x.pistas || 0) > 0).length, 'pediram pista');
+  const corpo = $('pn-tabela').querySelector('tbody'); corpo.textContent = '';
+  if (!s.length) {
+    $('pn-sessoes-estado').className = 'estado vazio'; $('pn-sessoes-estado').textContent = 'Nenhum aluno entrou ainda. Compartilhe o link, o QR ou o código.';
+    $('pn-sessoes-estado').classList.remove('oculto'); $('pn-tabela').classList.add('oculto'); return;
+  }
+  $('pn-sessoes-estado').classList.add('oculto'); $('pn-tabela').classList.remove('oculto');
+  s.forEach(x => {
+    const tr = el('tr');
+    tr.appendChild(el('td', null, x.nome || '(sem nome)'));
+    tr.appendChild(el('td', null, x.problemaIdx >= 0 ? String(x.problemaIdx + 1) : ''));
+    const [classe, rotulo] = situacao(x);
+    const sit = el('td'); sit.appendChild(el('span', 'selo ' + classe, rotulo)); tr.appendChild(sit);
+    tr.appendChild(el('td', null, String(x.pistas || 0)));
+    ['antes', 'depois', 'percurso'].forEach(k => { const td = el('td'); td.appendChild(el('div', 'ad-mini', x[k] || '')); tr.appendChild(td); });
+    const acao = el('td'); const conv = Array.isArray(x.conversa) ? x.conversa : [];
+    if (conv.length) {
+      const b = el('button', 'btn mini-btn', abertas.has(x.id) ? 'Fechar conversa' : 'Ver conversa');
+      b.onclick = () => { abertas.has(x.id) ? abertas.delete(x.id) : abertas.add(x.id); renderSessoes(); };
+      acao.appendChild(b);
+    }
+    tr.appendChild(acao); corpo.appendChild(tr);
+    if (conv.length && abertas.has(x.id)) {
+      const linha = el('tr'); const td = el('td'); td.colSpan = 8;
+      const caixa = el('div', 'conversa');
+      const enun = P.aula.problemas && P.aula.problemas[x.problemaIdx];
+      if (enun) { caixa.appendChild(el('b', null, 'Situação-problema ' + (x.problemaIdx + 1) + ': ')); caixa.appendChild(document.createTextNode(enun + '\n\n')); }
+      conv.forEach(m => { caixa.appendChild(el('b', null, (m.de === 'aluno' ? (x.nome || 'Aluno') : 'Faísca') + ': ')); caixa.appendChild(document.createTextNode(m.texto + '\n\n')); });
+      td.appendChild(caixa); linha.appendChild(td); corpo.appendChild(linha);
+    }
+  });
+}
+
+/* ---- agrupamentos (erros conceituais e dúvidas) ---- */
+const CFG_ERROS = {
+  campo: 'agrupamento', alvo: 'pn-erros', botao: 'pn-agrupar', status: 'pn-agrupado-em', rotuloBotao: 'Agrupar erros da turma',
+  itens: () => P.sessoes.flatMap(s => (s.equivocos || []).map(e => ({ aluno: s.nome || '(sem nome)', texto: e }))),
+  vazio: () => P.sessoes.some(x => x.concluida) ? 'Nenhum erro conceitual foi registrado nas situações concluídas.' : 'Os erros aparecem aqui quando os alunos concluírem a situação-problema.',
+  denominador: () => P.sessoes.filter(x => x.concluida).length, sufixo: 'que concluíram',
+  pedido: 'erros conceituais registrados em situações-problema', regra: 'Agrupe as frases que descrevem O MESMO erro conceitual.', nome: 'frase curta e impessoal que nomeia o erro'
+};
+const CFG_DUVIDAS = {
+  campo: 'agrupDuvidas', alvo: 'pn-duvidas', botao: 'pn-agrupar-duvidas', status: 'pn-duvidas-status', rotuloBotao: 'Agrupar dúvidas',
+  itens: () => P.sessoes.flatMap(s => (s.duvidas || []).map(e => ({ aluno: s.nome || '(sem nome)', texto: e }))),
+  vazio: () => 'Nenhuma dúvida foi perguntada nesta aula ainda.',
+  denominador: () => P.sessoes.length, sufixo: 'que entraram',
+  pedido: 'mensagens que alunos escreveram ao tirar dúvidas', regra: 'Agrupe as mensagens que tratam DA MESMA dúvida ou do mesmo termo. Mensagens que são só continuação de conversa (por exemplo "sim", "entendi") vão para um grupo chamado "Continuação de conversa".', nome: 'frase curta que nomeia a dúvida'
+};
+function renderGrupos(cfg) {
+  const alvo = $(cfg.alvo); alvo.textContent = '';
+  const itens = cfg.itens();
+  $(cfg.botao).disabled = itens.length < 2;
+  if (!itens.length) { alvo.appendChild(el('div', 'estado vazio', cfg.vazio())); $(cfg.status).textContent = ''; return; }
+  const ag = P.aula[cfg.campo];
+  const valido = ag && ag.total === itens.length && Array.isArray(ag.grupos);
+  $(cfg.status).textContent = valido ? 'Agrupado por IA. Confira os grupos.' : (ag ? 'Há registros novos. Agrupe de novo.' : '');
+  const grupos = valido ? ag.grupos : itens.map(i => ({ rotulo: i.texto, itens: [i] }));
+  const den = Math.max(1, cfg.denominador());
+  grupos.slice().sort((a, b) => b.itens.length - a.itens.length).forEach(g => {
+    const alunos = Array.from(new Set(g.itens.map(i => i.aluno)));
+    const bloco = el('div', 'grupo-erro');
+    bloco.appendChild(el('div', 'titulo-erro', g.rotulo));
+    const linha = el('div', 'linha'); linha.appendChild(el('b', null, String(alunos.length)));
+    const barra = el('div', 'barra'); const cheio = el('div'); cheio.style.width = Math.min(100, alunos.length / den * 100) + '%';
+    barra.appendChild(cheio); linha.appendChild(barra); bloco.appendChild(linha);
+    bloco.appendChild(el('div', 'quem-erro', alunos.length + ' de ' + cfg.denominador() + ' ' + cfg.sufixo + ': ' + alunos.join(', ')));
+    if (valido) g.itens.forEach(i => bloco.appendChild(el('div', 'quem-erro', '· ' + i.aluno + ': ' + i.texto)));
+    alvo.appendChild(bloco);
+  });
+}
+async function agrupar(cfg) {
+  const itens = cfg.itens();
+  if (itens.length < 2) return;
+  const botao = $(cfg.botao); botao.disabled = true; botao.textContent = 'Agrupando...';
+  try {
+    const lista = itens.map((i, n) => n + ' | ' + i.texto).join('\n');
+    const bruto = await chamarAPI([{ role: 'user', content: `Abaixo estão ${cfg.pedido} na aula "${P.aula.titulo}" da disciplina ${P.aula.disciplinaNome}. Cada linha tem um número e um texto.
+
+${lista}
+
+${cfg.regra} Só junte quando for de fato o mesmo assunto. Cada número deve aparecer em exatamente um grupo. Responda SOMENTE com JSON válido:
+{"grupos": [{"rotulo": "${cfg.nome}", "itens": [0, 3]}]}` }],
+      { system: 'Você organiza registros de uma turma para um professor. Você não avalia alunos, não atribui nota e não sugere nota.', semMaterial: true, quem: 'prof:' + P.user.uid, maxTokens: 1500 });
+    const j = extrairJSON(bruto);
+    if (!j || !Array.isArray(j.grupos)) throw new Error('formato inesperado');
+    const usados = new Set(), grupos = [];
+    j.grupos.forEach(g => {
+      const idx = (Array.isArray(g.itens) ? g.itens : []).filter(n => Number.isInteger(n) && n >= 0 && n < itens.length && !usados.has(n));
+      idx.forEach(n => usados.add(n));
+      if (idx.length) grupos.push({ rotulo: String(g.rotulo || itens[idx[0]].texto).slice(0, 200), itens: idx.map(n => itens[n]) });
+    });
+    itens.forEach((i, n) => { if (!usados.has(n)) grupos.push({ rotulo: i.texto, itens: [i] }); });
+    P.aula[cfg.campo] = { total: itens.length, grupos };
+    await db.collection('aulas').doc(P.aula.id).update({ [cfg.campo]: P.aula[cfg.campo] });
+    renderGrupos(cfg);
+  } catch (e) {
+    console.error(e);
+    $(cfg.status).textContent = 'Não foi possível agrupar agora (' + (e.message === 'SEM_CONEXAO' ? 'sem conexão' : e.message) + ').';
+  } finally { botao.textContent = cfg.rotuloBotao; botao.disabled = cfg.itens().length < 2; }
+}
+$('pn-agrupar').addEventListener('click', () => agrupar(CFG_ERROS));
+$('pn-agrupar-duvidas').addEventListener('click', () => agrupar(CFG_DUVIDAS));
+$('pn-csv').addEventListener('click', () => {
+  const c = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const linhas = [['aluno', 'problema', 'situacao', 'trocas', 'pistas', 'minutos', 'antes', 'depois', 'como_chegou', 'erros_conceituais', 'duvidas'].join(';')];
+  P.sessoes.forEach(s => linhas.push([c(s.nome), s.problemaIdx >= 0 ? s.problemaIdx + 1 : '', c(situacao(s)[1]), s.trocas || 0, s.pistas || 0, s.minutos ?? '',
+    c(s.antes), c(s.depois), c(s.percurso), c((s.equivocos || []).join(' | ')), c((s.duvidas || []).join(' | '))].join(';')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'faisca_' + P.aula.id + '.csv'; a.click();
+});
+
+/* ================= ROTEADOR ================= */
+(function rotear() {
+  const q = new URLSearchParams(location.search);
+  const t = (q.get('t') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (t) abrirAula(t);
+  else if (q.has('prof') || q.has('painel') || q.has('d')) iniciarProfessor();
+  else mostrar('tela-inicio');
+})();
 </script>
 </body>
 </html>
